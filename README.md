@@ -1,3 +1,26 @@
+# NOTE
+
+This is the future Chrome version of the [copy-latex](https://addons.mozilla.org/en-US/firefox/addon/copy-latex) firefox extension.
+
+The current published Chrome extension comes from this repository: [https://github.com/Mapaor/old-copy-latex-chrome-extension](https://github.com/Mapaor/old-copy-latex-chrome-extension), which more or less corresponds to version 1.2 of the Firefox one (which is currently in v1.4).
+
+The thing is, it is impractical to maintain two separate unlinked repositories, and I also do not want to use build scripts, I want the code clean, and to be easy to read and ready to use.
+
+But there is a intrinsic GitHub limitation, users cannot fork their own repositories (I really don't get why). However I recently started learning Git in a more traditional sense and I've figured out you can just change add as many remote branches as you want. For example:
+
+```git remote add firefox https://github.com/Mapaor/copy-latex-firefox-extension.git```
+
+Maybe it's common knowledge but I wasn't aware of this, I thought each local branch had just one remote branch.
+
+Well, long story short now this repo is a fork of the firefox repo (although in GitHub it does not appear as a fork).
+
+So the plan is now (when I have time):
+
+1. Adapt this code for the Chrome API's and manifest keys
+2. Publish the 1.4 version on Chrome Extensions
+3. Keep on improving the firefox one (I'm working on adding Typst support right now)
+4. Then gradually fetch the changes and manually adapt them to Chrome APIs. 
+
 # CopyLaTeX
 
 A Firefox extension that lets you quickly copy LaTeX code (KaTeX or MathJax) from equations displayed on websites like ChatGPT, DeepSeek, or any blog using mathematical equations. It works simply by hovering over an equation and clicking to copy the LaTeX expression.
