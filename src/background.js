@@ -2,26 +2,26 @@
 
 // Update context menu title based on user preference
 async function updateContextMenuTitle() {
-  const result = await browser.storage.local.get('outputFormat');
+  const result = await chrome.storage.local.get('outputFormat');
   const format = result.outputFormat || 'latex';
   
   const title = format === 'typst' 
     ? 'Copy as Typst' 
     : 'Copy as Markdown (with LaTeX)';
   
-  await browser.contextMenus.update('copy-selection-as-markdown', { title });
+  await chrome.contextMenus.update('copy-selection-as-markdown', { title });
 }
 
 // Create context menu on installation
-browser.runtime.onInstalled.addListener(async () => {
-  const result = await browser.storage.local.get('outputFormat');
+chrome.runtime.onInstalled.addListener(async () => {
+  const result = await chrome.storage.local.get('outputFormat');
   const format = result.outputFormat || 'latex';
   
   const title = format === 'typst' 
     ? 'Copy as Typst' 
     : 'Copy as Markdown (with LaTeX)';
   
-  browser.contextMenus.create({
+  chrome.contextMenus.create({
     id: 'copy-selection-as-markdown',
     title: title,
     contexts: ['selection']
@@ -30,20 +30,20 @@ browser.runtime.onInstalled.addListener(async () => {
 });
 
 // Listen for storage changes to update context menu title
-browser.storage.onChanged.addListener((changes, areaName) => {
+chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local' && changes.outputFormat) {
     updateContextMenuTitle();
   }
 });
 
 // Handle context menu clicks
-browser.contextMenus.onClicked.addListener(async (info, tab) => {
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === 'copy-selection-as-markdown' && tab?.id) {
     // console.log('[Copy LaTeX] Context menu clicked, tab ID:', tab.id);
 
     try {
       // Execute script to get the selection HTML
-      const results = await browser.scripting.executeScript({
+      const results = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => {
           // This function runs in the content script context
@@ -74,7 +74,7 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
           // console.log('[Copy LaTeX] Got selection HTML, length:', result.html.length);
 
           // Send message to content script to convert HTML to Markdown
-          const response = await browser.tabs.sendMessage(tab.id, {
+          const response = await chrome.tabs.sendMessage(tab.id, {
             type: 'convertHtmlToMarkdown',
             html: result.html
           });

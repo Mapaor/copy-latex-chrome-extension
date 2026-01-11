@@ -1,7 +1,7 @@
 // Inject page script for MathJax v3 extraction
 async function injectMathJaxPageScript() {
   try {
-    const scriptUrl = browser.runtime.getURL('mathjax-api.js');
+    const scriptUrl = chrome.runtime.getURL('mathjax-api.js');
     const response = await fetch(scriptUrl);
     const scriptText = await response.text();
     
@@ -211,7 +211,7 @@ function latexToTypst(latex) {
 async function copyLatex(tex) {
   try {
     // Get user's format preference
-    const result = await browser.storage.local.get('outputFormat');
+    const result = await chrome.storage.local.get('outputFormat');
     const format = result.outputFormat || 'latex';
     
     // Convert to Typst if selected
@@ -373,13 +373,13 @@ document.addEventListener('click', (e) => {
 // NOW ALSO WITH TYPST SUPPORT ("Copy as Typst")
 
 // Listen for messages from background script
-browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'convertHtmlToMarkdown') {
     // console.log('[Copy LaTeX] Converting HTML to Markdown, length:', message.html?.length);
     convertAndCopyHtml(message.html).then(async result => {
       if (result.ok) {
         // Check user's format preference
-        const storageResult = await browser.storage.local.get('outputFormat');
+        const storageResult = await chrome.storage.local.get('outputFormat');
         const format = storageResult.outputFormat || 'latex';
         
         // If Typst mode, convert markdown to typst

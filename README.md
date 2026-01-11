@@ -1,29 +1,21 @@
-# NOTE
+# Temporary note
 
-This is the future Chrome version of the [copy-latex](https://addons.mozilla.org/en-US/firefox/addon/copy-latex) firefox extension.
+This is the future (when accepted) Chrome version of the [copy-latex](https://addons.mozilla.org/en-US/firefox/addon/copy-latex) Firefox extension.
 
-The current published Chrome extension comes from this repository: [https://github.com/Mapaor/old-copy-latex-chrome-extension](https://github.com/Mapaor/old-copy-latex-chrome-extension), which more or less corresponds to version 1.2 of the Firefox one (which is currently in v1.4).
+The current (as of 11/01/2026) published Chrome extension comes from this repository: [https://github.com/Mapaor/old-copy-latex-chrome-extension](https://github.com/Mapaor/old-copy-latex-chrome-extension), which more or less corresponds to version 1.2 of the Firefox one (which is currently in v1.4).
 
 The thing is, it is impractical to maintain two separate unlinked repositories, and I also do not want to use build scripts, I want the code clean, and to be easy to read and ready to use.
 
-But there is a intrinsic GitHub limitation, users cannot fork their own repositories (I really don't get why). However I recently started learning Git in a more traditional sense and I've figured out you can just change add as many remote branches as you want. For example:
-
-```git remote add firefox https://github.com/Mapaor/copy-latex-firefox-extension.git```
-
+But there is a intrinsic GitHub limitation, users cannot fork their own repositories (I really don't get why). However I recently started learning Git in a more traditional sense and I've figured out you can just change add as many remote branches as you want. 
 Maybe it's common knowledge but I wasn't aware of this, I thought each local branch had just one remote branch.
 
 Well, long story short now this repo is a fork of the firefox repo (although in GitHub it does not appear as a fork).
 
-So the plan is now (when I have time):
-
-1. Adapt this code for the Chrome API's and manifest keys
-2. Publish the 1.4 version on Chrome Extensions
-3. Keep on improving the firefox one (I'm working on adding Typst support right now)
-4. Then gradually fetch the changes and manually adapt them to Chrome APIs. 
+I've already adapted the manifest to Chrome keys and the code to Chrome API's. When this version gets published I'll delete this temporary note and mark the old chrome repo as archive only.
 
 # CopyLaTeX
 
-A Firefox extension that lets you quickly copy LaTeX code (KaTeX or MathJax) from equations displayed on websites like ChatGPT, DeepSeek, or any blog using mathematical equations. It works simply by hovering over an equation and clicking to copy the LaTeX expression.
+A Chrome and Firefox extension that lets you quickly copy LaTeX code (KaTeX or MathJax) from equations displayed on websites like ChatGPT, DeepSeek, or any blog using mathematical equations. It works simply by hovering over an equation and clicking to copy the LaTeX expression.
 
 Version 1.1: Now it also works with with Wikipedia and Wikiwand images.
 
@@ -55,6 +47,8 @@ You can use [https://markdown-preview-katex.vercel.app/](https://markdown-previe
 You can use [https://typst-online.vercel.app/](https://typst-online-editor.vercel.app/) to test this feature.
 
 
+You can use [https://markdown-preview-katex.vercel.app](https://markdown-preview-katex.vercel.app) to test the Copy as Markdown function.
+
 ## Popular Sites Using MathJax/KaTeX
 Generally any math, physics, or engineering-related blog or website. Some typical examples:
 - KaTeX: ChatGPT, DeepSeek, Notion, Gemini...
@@ -63,16 +57,34 @@ Generally any math, physics, or engineering-related blog or website. Some typica
 ## Host permissions and speed
 You can check the javascript source code yourself. It loads after everything and is very fast and small sized. However if you want you can always customize in which hosts (websites) the extension loads or not:
 
-<img src="assets/toggle-firefox.jpg" alt="Manage-extension-permissions" width="800">
+<img src="assets/only-specific-sites.jpg" alt="Manage-allowed-hosts" width="800">
 
-This is done in "Firefox Settings > Extensions & Themes" (or simply search `about:addons`), clicking the extension and choosing the tab "Permissions and Data".
+<img src="assets/example-specific-site.jpg" alt="Adding-an-allowed-host" width="800">
 
-In case you turn off the "all sites" toggle option, you can also add manual sites that are not in the default list.
+This is done in `chrome://extensions` in the extension 'Details'.
 
-<img src="assets/manual-specific-site.jpg" alt="Manage-extension-permissions" width="800">
+<details>
+<summary>Recommended websites to add</summary>
 
-And now the custom site should appear as a new toggle in the "Permissions and data" tab.
+- https://chatgpt.com/*
+- https://chat.deepseek.com/*
+- https://math.stackexchange.com/*
+- https://physics.stackexchange.com/*
+- https://proofwiki.org/*
+- https://\*.wikipedia.org/*
+- https://www.wikiwand.com/*
+- https://mathoverflow.net/*
+- https://\*.notion.site/*
+- https://publish.obsidian.md/*
+- https://nbviewer.org/*
+- https://gemini.google.com/*
+- https://www.phind.com/*
+- https://chat.mistral.ai/*
+- https://librechat-librechat.hf.space/*
+- https://www.perplexity.ai/*
+- https://phys.libretexts.org/*
 
+</details>
 
 ## How it works technically
 
@@ -109,18 +121,23 @@ And now the custom site should appear as a new toggle in the "Permissions and da
 
 ### How to test the extension locally
 
-1. Create a zip that contains all the files inside the `src` directory (without containing the src folder itself).
-2. Then go to `about:debugging` (as if it were an URL) and in the 'This Firefox' tab select the button 'Load a Temporary Add-On...' and input the zip file.
+1. Download the `src` directory (using for example [download-directory.github.io](https://download-directory.github.io/)). Rename it if you want.
+2. Then go to `chrome://extensions` (as if it were an URL) and in the top left click the 'Load unpacked' button and select the `src` (or whatever is named now) folder.
 
 ## Links
-- Firefox Add-on page: [https://addons.mozilla.org/en-US/firefox/addon/copy-latex](https://addons.mozilla.org/en-US/firefox/addon/copy-latex)
-- GitHub Repo: [https://github.com/Mapaor/copy-latex-firefox-extension](https://github.com/Mapaor/copy-latex-firefox-extension)
-- README as a website: [https://mapaor.github.io/copy-latex-firefox-extension/](https://mapaor.github.io/copy-latex-firefox-extension/)
+- Chrome Add-on page: [https://chromewebstore.google.com/detail/copy-latex-katex-mathjax/lmhdbdfaadjfjclobmodomehekpjpkgn](https://chromewebstore.google.com/detail/copy-latex-katex-mathjax/lmhdbdfaadjfjclobmodomehekpjpkgn)
+- GitHub Repo: [https://github.com/Mapaor/copy-latex-chrome-extension](https://github.com/Mapaor/copy-latex-chrome-extension)
+- README as a website: [https://mapaor.github.io/copy-latex-chrome-extension/](https://mapaor.github.io/copy-latex-chrome-extension/)
 
-## Chrome version
-There is also a Chrome version of this extension: [https://github.com/Mapaor/copy-latex-chrome-extension](https://github.com/Mapaor/old-copy-latex-chrome-extension) 
+## Firefox version
+There is also a Firefox version of this extension: [https://github.com/Mapaor/copy-latex-fireofx-extension](https://github.com/Mapaor/copy-latex-firefox-extension) 
 
-TODO: Update chrome version and generate it as a fork of this one (pending).
+You can also use this extension in Brave and Arc (they support Chrome extensions by default). 
+
+I also plan to adapt this code for Edge and Opera and publish in their respective places. 
+
+A Safari version is not planned because publishing in Safari is ridiculously expensive.
+
 
 ## Acknowledgements
 

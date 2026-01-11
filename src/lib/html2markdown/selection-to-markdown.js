@@ -1,4 +1,3 @@
-
 // Convert HTML to Markdown and copy to clipboard (main function)
 async function convertAndCopyHtml(html) {
   try {
