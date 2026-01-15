@@ -1,13 +1,39 @@
 // Background script (service worker) for context menu
 
+// Update context menu title based on user preference
+async function updateContextMenuTitle() {
+  const result = await browser.storage.local.get('outputFormat');
+  const format = result.outputFormat || 'latex';
+  
+  const title = format === 'typst' 
+    ? 'Copy as Typst' 
+    : 'Copy as Markdown (with LaTeX)';
+  
+  await browser.contextMenus.update('copy-selection-as-markdown', { title });
+}
+
 // Create context menu on installation
-browser.runtime.onInstalled.addListener(() => {
+browser.runtime.onInstalled.addListener(async () => {
+  const result = await browser.storage.local.get('outputFormat');
+  const format = result.outputFormat || 'latex';
+  
+  const title = format === 'typst' 
+    ? 'Copy as Typst' 
+    : 'Copy as Markdown (with LaTeX)';
+  
   browser.contextMenus.create({
     id: 'copy-selection-as-markdown',
-    title: 'Copy as Markdown (with LaTeX)',
+    title: title,
     contexts: ['selection']
   });
   // console.log('[Copy LaTeX] Context menu created');
+});
+
+// Listen for storage changes to update context menu title
+browser.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes.outputFormat) {
+    updateContextMenuTitle();
+  }
 });
 
 // Handle context menu clicks

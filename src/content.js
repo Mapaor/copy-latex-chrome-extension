@@ -9,7 +9,7 @@ async function injectMathJaxPageScript() {
     script.textContent = scriptText;
     document.documentElement.appendChild(script);
   } catch (error) {
-    console.error('[HoverLatex] Failed to inject MathJax script:', error);
+    console.error('[Copy LaTeX] Failed to inject MathJax script:', error);
   }
 }
 
@@ -19,7 +19,7 @@ injectMathJaxPageScript();
 let lastMathJaxV3Latex = null;
 window.addEventListener('message', function(event) {
   if (event.source !== window) return;
-  if (event.data && event.data.type === 'HoverLatex_MathJaxV3') {
+  if (event.data && event.data.type === 'CopyLaTeX_MathJaxV3') {
     lastMathJaxV3Latex = event.data.latex;
   }
 });
@@ -192,8 +192,35 @@ function hideOverlay() {
   }
 }
 
-function copyLatex(tex) {
-  navigator.clipboard.writeText(tex).then(() => {
+// Convert LaTeX to Typst using the tex2typst library
+function latexToTypst(latex) {
+  if (!window.tex2typst) {
+    console.error('[Copy LaTeX] tex2typst library not loaded');
+    return latex; // Fallback to original LaTeX
+  }
+  
+  try {
+    return window.tex2typst(latex); // Library already loaded as a content script
+  } catch (error) {
+    console.error('[Copy LaTeX] Conversion error:', error);
+    return latex; // Fallback to original LaTeX
+  }
+}
+
+// Copy LaTeX or Typst code based on user preference
+async function copyLatex(tex) {
+  try {
+    // Get user's format preference
+    const result = await browser.storage.local.get('outputFormat');
+    const format = result.outputFormat || 'latex';
+    
+    // Convert to Typst if selected
+    const outputText = format === 'typst' ? latexToTypst(tex) : tex;
+    
+    // Copy to clipboard
+    await navigator.clipboard.writeText(outputText);
+    
+    // Show success feedback
     overlay.classList.add('copied');
     const span = overlay.querySelector('span');
     span.textContent = 'Copied! ';
@@ -202,9 +229,9 @@ function copyLatex(tex) {
       overlay.classList.remove('copied');
       span.textContent = 'Click to copy';
     }, 1500);
-  }).catch(err => {
-    console.error("[HoverLatex] Clipboard error:", err);
-  });
+  } catch (err) {
+    console.error("[Copy LaTeX] Clipboard error:", err);
+  }
 }
 
 document.addEventListener('mouseover', (e) => {
@@ -343,13 +370,45 @@ document.addEventListener('click', (e) => {
 
 
 // NEW FEATURE!!!: Selection to Markdown with LaTeX
+// NOW ALSO WITH TYPST SUPPORT ("Copy as Typst")
 
 // Listen for messages from background script
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'convertHtmlToMarkdown') {
     // console.log('[Copy LaTeX] Converting HTML to Markdown, length:', message.html?.length);
-    convertAndCopyHtml(message.html).then(result => {
-      sendResponse(result);
+    convertAndCopyHtml(message.html).then(async result => {
+      if (result.ok) {
+        // Check user's format preference
+        const storageResult = await browser.storage.local.get('outputFormat');
+        const format = storageResult.outputFormat || 'latex';
+        
+        // If Typst mode, convert markdown to typst
+        if (format === 'typst') {
+          try {
+            if (!window.markdown2typst) {
+              console.error('[Copy LaTeX] markdown2typst library not loaded');
+              sendResponse({ ok: false, error: 'markdown2typst library not loaded' });
+              return;
+            }
+            
+            // Get the markdown from clipboard (we just copied it)
+            const markdown = await navigator.clipboard.readText();
+            const typst = window.markdown2typst(markdown);
+            
+            // Copy typst back to clipboard
+            await navigator.clipboard.writeText(typst);
+            console.log('[Copy LaTeX] Converted to Typst and copied');
+            sendResponse({ ok: true, format: 'typst' });
+          } catch (error) {
+            console.error('[Copy LaTeX] Typst conversion error:', error);
+            sendResponse({ ok: false, error: String(error) });
+          }
+        } else {
+          sendResponse(result);
+        }
+      } else {
+        sendResponse(result);
+      }
     });
     return true;  // Keep channel open for async response
   }

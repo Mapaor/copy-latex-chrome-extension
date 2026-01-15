@@ -21,7 +21,16 @@ Version 1.4: New feature! Select text (that includes formulas), right click on i
 <img src="assets/gif-demo-wikipedia.gif" alt="Demo-MathJax" width="800">
 
 #### Copy as Markdown
-<img src="assets/gif-demo-copy-as-markdown.gif" alt="Demo-KaTeX" width="800">
+<img src="assets/gif-demo-copy-as-markdown.gif" alt="Demo-Markdown" width="800">
+
+You can use [https://markdown-preview-katex.vercel.app/](https://markdown-preview-katex.vercel.app/) to test this feature.
+
+#### Copy as Typst
+
+<img src="assets/gif-demo-copy-as-typst.gif" alt="Demo-Typst" width="800">
+
+You can use [https://typst-online.vercel.app/](https://typst-online-editor.vercel.app/) to test this feature.
+
 
 ## Popular Sites Using MathJax/KaTeX
 Generally any math, physics, or engineering-related blog or website. Some typical examples:
@@ -89,6 +98,15 @@ And now the custom site should appear as a new toggle in the "Permissions and da
 There is also a Chrome version of this extension: [https://github.com/Mapaor/copy-latex-chrome-extension](https://github.com/Mapaor/old-copy-latex-chrome-extension) 
 
 TODO: Update chrome version and generate it as a fork of this one (pending).
+
+## Acknowledgements
+
+Credits to @leander-ow for his dark mode contribution and to  @ashigirl96 for suggesting and providing a working code implementation for the "Copy as Markdown" feature. 
+
+This extension also works thanks to the following open source projects:
+- [Turndown](https://github.com/mixmark-io/turndown) - Library for converting HTML to Markdown
+- [tex2typst](https://github.com/qwinsi/tex2typst) - Library for converting LaTeX to Typst
+- [markdown2typst](https://github.com/Mapaor/markdown2typst) - Library for converting Markdown to Typst
 
 ## License
 

@@ -1,10 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Copy LaTeX (KaTeX & MathJax & Wikipedia Imgs)",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Hover and click to copy LaTeX expressions on ChatGPT, DeepSeek, Wikipedia, Stack Exchange and other math-related websites.",
-  "icons": { "48": "icon48.png" },
-  "permissions": ["contextMenus", "scripting", "activeTab"],
+  "icons": { "48": "icons/icon48.png" },
+  "permissions": ["contextMenus", "scripting", "activeTab", "storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "icons/icon48.png"
+    },
+    "default_title": "Copy LaTeX"
+  },
   "background": {
     "scripts": ["background.js"]
   },
@@ -41,7 +48,9 @@
         "content.js",
         "lib/html2markdown/selection-to-markdown.js",
         "lib/html2markdown/turndown/turndown.js",
-        "lib/html2markdown/turndown/turndown-plugin-gfm.js"
+        "lib/html2markdown/turndown/turndown-plugin-gfm.js",
+        "lib/latex2typst/tex2typst.min.js",
+        "lib/markdown2typst/markdown2typst.browser.min.js"
       ],
       "css": ["overlay.css"],
       "run_at": "document_idle"

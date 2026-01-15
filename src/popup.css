@@ -1,0 +1,106 @@
+/* MAIN DIV FOR THE POPUP */
+
+:root {
+  --bg: #f7f8fa;
+  --fg: #2c2f33;
+  --accent: #5865f2;
+  --accent-hover: #4752c4;
+  --border: #d1d5db;
+  --radius: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #18191c;
+    --fg: #e4e6eb;
+    --accent: #7289da;
+    --accent-hover: #5b6eae;
+    --border: #3a3c43;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+  }
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  min-width: 300px;
+  padding: 25px;
+}
+
+h3 {
+  margin-top: 0;
+  font-size: 1.1rem;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+
+/* ----------- CONTENT OF THE POPUP ---------- */
+
+.toggle-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px;
+}
+
+.format-label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #04622E;
+  transition: 0.3s;
+  border-radius: 26px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #1D9EAE;
+}
+
+input:checked + .slider:before {
+  transform: translateX(24px);
+}
+
+.slider:hover {
+  opacity: 0.9;
+}
