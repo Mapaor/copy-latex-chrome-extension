@@ -13,7 +13,7 @@ async function convertAndCopyHtml(html) {
     }
 
     const result = await copyToClipboard(markdown);
-    // console.log('[HoverLatex] Copy result:', result);
+    // console.log('[Copy LaTeX] Copy result:', result);
 
     return result;
   } catch (error) {
@@ -280,7 +280,7 @@ async function copyToClipboard(text) {
     return { ok: true, method: 'navigator_api' };
   } catch (error) {
     if (error instanceof KnownFailureError) {
-      console.debug('[HoverLatex]', error);
+      console.debug('[Copy LaTeX]', error);
       // Continue to fallback
     } else {
       const err = error;

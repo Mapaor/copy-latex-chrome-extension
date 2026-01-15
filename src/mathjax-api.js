@@ -32,7 +32,7 @@
     if (mjx) {
       const latex = getLatexForContainer(mjx);
       if (latex) {
-        window.postMessage({ type: 'HoverLatex_MathJaxV3', latex, mjxId: mjx.getAttribute('ctxtmenu_counter') }, '*');
+        window.postMessage({ type: 'CopyLaTeX_MathJaxV3', latex, mjxId: mjx.getAttribute('ctxtmenu_counter') }, '*');
       } 
     }
   }, true);
@@ -42,7 +42,7 @@
     if (mjx) {
       const latex = getLatexForContainer(mjx);
       if (latex) {
-        window.postMessage({ type: 'HoverLatex_MathJaxV3', latex, mjxId: mjx.getAttribute('ctxtmenu_counter') }, '*');
+        window.postMessage({ type: 'CopyLaTeX_MathJaxV3', latex, mjxId: mjx.getAttribute('ctxtmenu_counter') }, '*');
       }
     }
   }, true);
