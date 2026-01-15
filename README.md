@@ -31,9 +31,6 @@ You can use [https://markdown-preview-katex.vercel.app/](https://markdown-previe
 
 You can use [https://typst-online.vercel.app/](https://typst-online-editor.vercel.app/) to test this feature.
 
-
-You can use [https://markdown-preview-katex.vercel.app](https://markdown-preview-katex.vercel.app) to test the Copy as Markdown function.
-
 ## Popular Sites Using MathJax/KaTeX
 Generally any math, physics, or engineering-related blog or website. Some typical examples:
 - KaTeX: ChatGPT, DeepSeek, Notion, Gemini...
