@@ -2,11 +2,9 @@
 async function injectMathJaxPageScript() {
   try {
     const scriptUrl = chrome.runtime.getURL('mathjax-api.js');
-    const response = await fetch(scriptUrl);
-    const scriptText = await response.text();
     
     const script = document.createElement('script');
-    script.textContent = scriptText;
+    script.src = scriptUrl;
     document.documentElement.appendChild(script);
   } catch (error) {
     console.error('[Copy LaTeX] Failed to inject MathJax script:', error);
