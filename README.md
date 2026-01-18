@@ -10,6 +10,9 @@ Version 1.3: Dark mode enabled and replaced check emoji with SVG icon.
 
 Version 1.4: New feature! Select text (that includes formulas), right click on it and a `Copy as Markdown (with LaTeX)` option will appear.
 
+Version 1.5: Typst support!!
+
+
 ## Example GIFs
 #### KaTeX
 <img src="assets/gif-demo-katex.gif" alt="Demo-KaTeX" width="800">
