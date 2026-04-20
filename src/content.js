@@ -1,7 +1,7 @@
 // Inject page script for MathJax v3 extraction
 async function injectMathJaxPageScript() {
   try {
-    const scriptUrl = browser.runtime.getURL('mathjax-api.js');
+    const scriptUrl = chrome.runtime.getURL('mathjax-api.js');
     
     const script = document.createElement('script');
     script.src = scriptUrl;
