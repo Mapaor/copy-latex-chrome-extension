@@ -144,7 +144,7 @@ If you have an idea for a new feature open an issue and let me know! Also if you
 ## Planned features:
 
 - [X] **Text selection to Markdown**: Select some text that includes equations, right click and a new option "[Extension Icon] Copy as Markdown" appears.
-- [ ] **Typst support**: 
+- [X] **Typst support**: 
   Pop up with a toggle between LaTeX and Typst
 - [ ] **Custom  delimiters**: 
 Chose between no delimiters (default), `$` and `$$`, `\(` and `\[`, always `$`, or always `$$`.
