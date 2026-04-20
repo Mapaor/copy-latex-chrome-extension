@@ -113,8 +113,14 @@ This is done in `chrome://extensions` in the extension 'Details'.
 - GitHub Repo: [https://github.com/Mapaor/copy-latex-chrome-extension](https://github.com/Mapaor/copy-latex-chrome-extension)
 - README as a website: [https://mapaor.github.io/copy-latex-chrome-extension/](https://mapaor.github.io/copy-latex-chrome-extension/)
 
-## Chrome version
-There is also a Chrome version of this extension: [https://github.com/Mapaor/copy-latex-chrome-extension](https://github.com/Mapaor/old-copy-latex-chrome-extension) 
+## Firefox version
+There is also a Firefox version of this extension: [https://github.com/Mapaor/copy-latex-fireofx-extension](https://github.com/Mapaor/copy-latex-firefox-extension) 
+
+You can also use this extension in Brave and Arc (they support Chrome extensions by default). 
+
+I also plan to adapt this code for Edge and Opera and publish in their respective places. 
+
+A Safari version is not planned because publishing in Safari is ridiculously expensive.
 
 ## Acknowledgements
 
