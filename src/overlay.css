@@ -1,3 +1,28 @@
+.hoverlatex-overlay.theme-light {
+  background: #fff;
+  color: #000;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+}
+.hoverlatex-overlay.theme-light.copied {
+  background: #e6ffe6;
+  color: #006400;
+}
+.hoverlatex-overlay.theme-light .check-icon {
+  color: #006400;
+}
+
+.hoverlatex-overlay.theme-dark {
+  background: #1e1e1e;
+  color: #f0f0f0;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.6);
+}
+.hoverlatex-overlay.theme-dark.copied {
+  background: #052e16;
+  color: #dcfce7;
+}
+.hoverlatex-overlay.theme-dark .check-icon {
+  color: #dcfce7;
+}
 .hoverlatex-overlay {
   position: absolute;
   display: flex;

@@ -160,6 +160,9 @@ function createOverlay() {
   overlay = document.createElement('div');
   overlay.className = 'hoverlatex-overlay';
 
+  // Set theme class based on user preference
+  setOverlayThemeClass();
+
   // HTML overlay content with inline SVG icon and 'Click to copy' text
   overlay.appendChild(createSvgFromString(copy_svg));
   const span = document.createElement('span');
@@ -169,8 +172,26 @@ function createOverlay() {
   document.body.appendChild(overlay);
 }
 
+async function setOverlayThemeClass() {
+  if (!overlay) return;
+  // Remove any previous theme class
+  overlay.classList.remove('theme-light', 'theme-dark');
+  let theme = 'system';
+  try {
+    const result = await browser.storage.local.get('themeMode');
+    theme = result.themeMode || 'system';
+  } catch {}
+  if (theme === 'light') {
+    overlay.classList.add('theme-light');
+  } else if (theme === 'dark') {
+    overlay.classList.add('theme-dark');
+  }
+  // If system, do not add any theme class (prefers-color-scheme CSS will apply)
+}
+
 function showOverlay(target, tex) {
   if (!overlay) createOverlay();
+  setOverlayThemeClass();
 
   overlay.dataset.tex = tex;
   const rect = target.getBoundingClientRect();

@@ -12,6 +12,30 @@ async function updateContextMenuTitle() {
   await chrome.contextMenus.update('copy-selection-as-markdown', { title });
 }
 
+// Update context menu visibility based on user preference
+async function updateContextMenuVisibility() {
+  const result = await browser.storage.local.get('showContextMenu');
+  // Default to true if undefined
+  const showContextMenu = (result.showContextMenu === undefined) ? true : !!result.showContextMenu;
+
+  // Remove the menu item if it exists
+  browser.contextMenus.remove('copy-selection-as-markdown').catch(() => {});
+
+  if (showContextMenu) {
+    const formatResult = await browser.storage.local.get('outputFormat');
+    const format = formatResult.outputFormat || 'latex';
+    const title = format === 'typst' 
+      ? 'Copy as Typst' 
+      : 'Copy as Markdown (with LaTeX)';
+
+    browser.contextMenus.create({
+      id: 'copy-selection-as-markdown',
+      title: title,
+      contexts: ['selection']
+    });
+  }
+}
+
 // Create context menu on installation
 chrome.runtime.onInstalled.addListener(async () => {
   const result = await chrome.storage.local.get('outputFormat');
@@ -35,6 +59,16 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     updateContextMenuTitle();
   }
 });
+
+// Update context menu visibility on storage change
+browser.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes.showContextMenu) {
+    updateContextMenuVisibility();
+  }
+});
+
+// Ensure context menu visibility is correct on startup
+updateContextMenuVisibility();
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
