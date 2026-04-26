@@ -1,6 +1,6 @@
 # CopyLaTeX
 
-A Chrome and Firefox extension that lets you quickly copy LaTeX code (KaTeX or MathJax) from equations displayed on websites like ChatGPT, DeepSeek, or any blog using mathematical equations. It works simply by hovering over an equation and clicking to copy the LaTeX expression.
+A Chrome (and [Firefox](#firefox-version)) extension that lets you quickly copy LaTeX code (KaTeX or MathJax) from equations displayed on websites like ChatGPT, DeepSeek, or any blog using mathematical equations. It works simply by hovering over an equation and clicking to copy the LaTeX expression.
 
 Version 1.1: Now it also works with with Wikipedia and Wikiwand images.
 
@@ -10,7 +10,9 @@ Version 1.3: Dark mode enabled and replaced check emoji with SVG icon.
 
 Version 1.4: New feature! Select text (that includes formulas), right click on it and a `Copy as Markdown (with LaTeX)` option will appear.
 
-Version 1.5: Now with Typst support!!!
+Version 1.5: Now with Typst support!
+
+Version 1.6: A new config button in the popup UI that allows some basic customization (like choosing the theme or hiding the 'copy as' feature in the context menu).
 
 ## Example GIFs
 #### KaTeX
@@ -124,7 +126,7 @@ A Safari version is not planned because publishing in Safari is ridiculously exp
 
 ## Acknowledgements
 
-Credits to @leander-ow for his dark mode contribution and to  @ashigirl96 for suggesting and providing a working code implementation for the "Copy as Markdown" feature. 
+Credits to @leander-ow for his dark mode contribution and to  @ashigirl96 for suggesting and providing a working code implementation for the copy selection as Markdown feature. 
 
 This extension also works thanks to the following open source projects:
 - [Turndown](https://github.com/mixmark-io/turndown) - Library for converting HTML to Markdown
@@ -139,10 +141,17 @@ It is MIT Licensed so that anyone can customize it to their needs but please don
 
 If you have an idea for a new feature open an issue and let me know! Also if you have the time to implement a feature you want it would be great if you made a pull request.
 
-## Planned features:
+## To-do minor improvements
+Some minor things to fix or improve (for when I have the time):
+- [ ] In the copy selection (both to Markdown and to Typst) feature fix the Wikipedia case (don't detect images that contain the `mwe-math` related classes as images).
+- [ ] Improve the documentation of the extension (the screenshots and GIFs are of previous versions).
 
+## Planned features:
 - [X] **Text selection to Markdown**: Select some text that includes equations, right click and a new option "[Extension Icon] Copy as Markdown" appears.
 - [X] **Typst support**: 
   Pop up with a toggle between LaTeX and Typst
+- [X] **Theme selection**: Config option to choose the theme (light, dark or system)
+- [X] **Hide option in context menu**:  Allow users to hide the copy selection feature when right-clicking (for those who don't need it and want a less clustered context menu).
 - [ ] **Custom  delimiters**: 
-Chose between no delimiters (default), `$` and `$$`, `\(` and `\[`, always `$`, or always `$$`.
+Config option to chose between no delimiters (default), `$` and `$$`, `\(` and `\[`, always `$`, or always `$$`.
+- [ ] **Custom translations**. Allow to replace the 'Click to copy', 'Copied!', 'Copy as Markdown' and 'Copy as Typst' messages to be replaced by custom ones.
