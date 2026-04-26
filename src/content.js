@@ -178,7 +178,7 @@ async function setOverlayThemeClass() {
   overlay.classList.remove('theme-light', 'theme-dark');
   let theme = 'system';
   try {
-    const result = await browser.storage.local.get('themeMode');
+    const result = await chrome.storage.local.get('themeMode');
     theme = result.themeMode || 'system';
   } catch {}
   if (theme === 'light') {

@@ -13,13 +13,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     // Theme radio buttons logic
     const themeRadios = document.querySelectorAll('input[name="themeMode"]');
-    const themeResult = await browser.storage.local.get('themeMode');
+    const themeResult = await chrome.storage.local.get('themeMode');
     const themeMode = themeResult.themeMode || 'system';
     for (const radio of themeRadios) {
       radio.checked = radio.value === themeMode;
       radio.addEventListener('change', async (e) => {
         if (e.target.checked) {
-          await browser.storage.local.set({ themeMode: e.target.value });
+          await chrome.storage.local.set({ themeMode: e.target.value });
           applyTheme(e.target.value);
         }
       });
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Save preference on change
   toggle.addEventListener('change', async (e) => {
     const format = e.target.checked ? 'typst' : 'latex';
-    await browser.storage.local.set({ outputFormat: format });
+    await chrome.storage.local.set({ outputFormat: format });
   });
 
   // Config/settings panel logic
@@ -69,13 +69,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Context menu option checkbox logic
   const contextMenuOptionCheckbox = document.getElementById('contextMenuOption');
-  const cmResult = await browser.storage.local.get('showContextMenu');
+  const cmResult = await chrome.storage.local.get('showContextMenu');
   // Default to true if undefined
   const showContextMenu = cmResult.showContextMenu;
   contextMenuOptionCheckbox.checked = (showContextMenu === undefined) ? true : !!showContextMenu;
   // Save the preference when the checkbox is toggled
   contextMenuOptionCheckbox.addEventListener('change', async () => {
-    await browser.storage.local.set({ showContextMenu: contextMenuOptionCheckbox.checked });
+    await chrome.storage.local.set({ showContextMenu: contextMenuOptionCheckbox.checked });
   });
 
   // Config/settings panel logic
@@ -110,12 +110,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Context menu option checkbox logic
   const contextMenuOptionCheckbox = document.getElementById('contextMenuOption');
-  const cmResult = await browser.storage.local.get('showContextMenu');
+  const cmResult = await chrome.storage.local.get('showContextMenu');
   // Default to true if undefined
   const showContextMenu = cmResult.showContextMenu;
   contextMenuOptionCheckbox.checked = (showContextMenu === undefined) ? true : !!showContextMenu;
   // Save the preference when the checkbox is toggled
   contextMenuOptionCheckbox.addEventListener('change', async () => {
-    await browser.storage.local.set({ showContextMenu: contextMenuOptionCheckbox.checked });
+    await chrome.storage.local.set({ showContextMenu: contextMenuOptionCheckbox.checked });
   });
 });
