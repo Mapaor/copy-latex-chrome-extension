@@ -72,38 +72,7 @@ This is done in `chrome://extensions` in the extension 'Details'.
 
 </details>
 
-## How it works technically
-
-1. **Content Script (`content.js`)**:
-   -  **For KaTeX**
-      - Automatically detects all `<span class="katex">` elements on the page.
-      - Extracts the LaTeX code from `<annotation encoding="application/x-tex">`.
-   - **For Gemini KaTeX**
-     - Extracts LaTeX inside `data-math` attribute.
-   - **For MathJax**
-     - Extracts LaTeX inside `<script type="math/tex">` elements.
-   - **For MathJax v3/v4**
-      - Injects page script (`mathjax-api.js`) to extract LaTeX from `mjx-container` elements via MathJax's API. Only possible via API and inject script because no LaTeX code present in the generated HTML.
-   - **For Wikipedia**
-     - Extracts LaTeX from `alt` attributes of images.
-   - **For all of them** 
-   - Shows an overlay when hovering over the equation.
-   - Allows clicking to copy the code to clipboard using `navigator.clipboard.writeText()`.
-   - Uses an inline `<svg>` to avoid external file dependencies.
-
-2. **CSS (`overlay.css`)**:
-   - Overlay styling: white background, subtle border and shadow.
-   - Large, readable text.
-   - Centered over the KaTeX formula.
-   - `pointer` cursor.
-
-3. **Extension declaration `manifest.json`**:
-   - Injects `content.js`, `overlay.css` and the other scripts.
-   - Sets information and permissions of the extension.
-4. **Background script `background.js`**:
-   - Handles context menu (right click). Needed to display the "Copy as Markdown" option when right clicking the selected text.
-5. **Selection script `selection-to-markdown.js`**:
-   - A set of functions, workers and utilities to convert HTML to markdown while preserving our extracted LaTeX. Under the hood uses the `turndown.js` library and the `turndown-plugin-gfm.js` GitHub-flavored markdown plugin for converting HTML to Markdown.
+## Technical details
 
 ### How to test the extension locally
 
