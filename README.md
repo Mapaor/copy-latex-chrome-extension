@@ -101,6 +101,7 @@ This extension also works thanks to the following open source projects:
 - [Turndown](https://github.com/mixmark-io/turndown) - Library for converting HTML to Markdown
 - [tex2typst](https://github.com/qwinsi/tex2typst) - Library for converting LaTeX to Typst
 - [markdown2typst](https://github.com/Mapaor/markdown2typst) - Library for converting Markdown to Typst
+- [webextension-polyfill](https://github.com/mozilla/webextension-polyfill/) - Library for using the Promise-based browser API in Chrome
 
 ## License
 
