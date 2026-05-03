@@ -89,25 +89,10 @@
 	function findKaTeXElementFromEventTarget(target) {
 		if (!(target instanceof Element)) return null;
 
-		
-    // In almost all katex sites event target is inside a .katex span tag
-    // Which normally contains two children: katex-html (where the event target is) and katex-mathml (where the TeX expression is stored).
-    const closest = target.closest?.('.katex');
-		if (closest) return closest;
-
-		const directDescendant = target.querySelector?.('.katex');
-		if (directDescendant) return directDescendant;
-
-    // Try a few ancestors and look for a descendant .katex
-		let node = target;
-		for (let i = 0; i < 4; i++) {
-			node = node.parentElement;
-			if (!node) break;
-			const descendant = node.querySelector?.('.katex');
-			if (descendant) return descendant;
-		}
-
-		return null;
+		// Only treat the hover/click as "KaTeX" when the pointer is actually inside
+		// a KaTeX-rendered subtree. Avoid scanning for any descendant `.katex`, because
+		// that makes the hit area too broad (e.g. entire lines containing inline math).
+		return target.closest?.('.katex') || null;
 	}
 
 	function findMathJaxTex(el) {
