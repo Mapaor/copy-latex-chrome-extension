@@ -1,5 +1,8 @@
 // Background script (service worker) for context menu
 
+// We use the Polyfill extension to use promise-based 'browser' API in Chrome (instead of the default 'chrome' callback-based API).
+importScripts('lib/polyfill/browser-polyfill.min.js');
+
 const CONTEXT_MENU_ID = 'copy-selection-as-markdown';
 
 function getContextMenuTitle(format) {
