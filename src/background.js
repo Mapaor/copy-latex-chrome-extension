@@ -1,79 +1,96 @@
 // Background script (service worker) for context menu
 
-// Provide `browser.*` with Promise-based APIs in Chrome.
-// (MV3 classic service worker; MV3 module workers can't use importScripts.)
+// We use the Polyfill extension to use promise-based 'browser' API in Chrome (instead of the default 'chrome' callback-based API).
 importScripts('lib/polyfill/browser-polyfill.min.js');
 
-// Update context menu title based on user preference
-async function updateContextMenuTitle() {
-  const result = await browser.storage.local.get('outputFormat');
-  const format = result.outputFormat || 'latex';
+const CONTEXT_MENU_ID = 'copy-selection-as-markdown';
+
+function getContextMenuTitle(format) {
+
+
   const title = format === 'typst'
     ? 'Copy as Typst'
     : 'Copy as Markdown (with LaTeX)';
-  try {
-    await browser.contextMenus.update('copy-selection-as-markdown', { title });
-  } catch (e) {
-    // Menu might not exist yet; ignore
-  }
+  return title;
 }
 
-// Update context menu visibility based on user preference
-async function updateContextMenuVisibility() {
-  const result = await browser.storage.local.get('showContextMenu');
+async function getLocalStorageConfig() {
+  const result = await browser.storage.local.get(['outputFormat', 'showContextMenu']);
+
+  const format = result.outputFormat || 'latex';
   // Default to true if undefined
   const showContextMenu = (result.showContextMenu === undefined) ? true : !!result.showContextMenu;
 
-  // Remove all context menus before (re)creating
+  return { format, showContextMenu };
+}
+
+async function ensureContextMenuExists({ title }) {
   try {
-    await browser.contextMenus.removeAll();
+    await browser.contextMenus.update(CONTEXT_MENU_ID, { title });
+    return;
   } catch (e) {
-    console.warn('[Copy LaTeX] Error removing context menus:', e);
+    // Menu might not exist yet; try creating it.
   }
 
-  if (showContextMenu) {
-    const formatResult = await browser.storage.local.get('outputFormat');
-    const format = formatResult.outputFormat || 'latex';
-    const title = format === 'typst'
-      ? 'Copy as Typst'
-      : 'Copy as Markdown (with LaTeX)';
+  try {
+    await browser.contextMenus.create({
+      id: CONTEXT_MENU_ID,
+      title,
+      contexts: ['selection']
+    });
+  } catch (e) {
+    // If it was created concurrently (or still exists), try updating once more.
     try {
-      await browser.contextMenus.create({
-        id: 'copy-selection-as-markdown',
-        title,
-        contexts: ['selection']
-      });
-    } catch (e) {
-      console.error('[Copy LaTeX] Error creating context menu:', e);
+      await browser.contextMenus.update(CONTEXT_MENU_ID, { title });
+    } catch (updateError) {
+      console.error('[Copy LaTeX] Error ensuring context menu exists:', updateError);
     }
-  } else {
-    // No need to do anything else since we already removed all menus
   }
+}
+
+async function ensureContextMenuRemoved() {
+  try {
+    await browser.contextMenus.remove(CONTEXT_MENU_ID);
+  } catch (e) {
+    // Menu might not exist; ignore.
+  }
+}
+
+// Render context menu based on user preference
+async function renderContextMenu() {
+  const config = await getLocalStorageConfig();
+  const format = config.format;
+  const showContextMenu = config.showContextMenu;
+
+  if (!showContextMenu) {
+    await ensureContextMenuRemoved();
+    return;
+  }
+
+  const title = getContextMenuTitle(format);
+  await ensureContextMenuExists({ title });
 }
 
 
 // Create context menu on installation or startup
 browser.runtime.onInstalled.addListener(() => {
-  updateContextMenuVisibility();
+  renderContextMenu();
 });
 browser.runtime.onStartup.addListener(() => {
-  updateContextMenuVisibility();
+  renderContextMenu();
 });
 
 // Storage change listener
 browser.storage.onChanged.addListener(async (changes, areaName) => {
   if (areaName !== 'local') return;
-  if (changes.showContextMenu) {
-    await updateContextMenuVisibility();
-  }
-  if (changes.outputFormat) {
-    await updateContextMenuTitle();
+  if (changes.showContextMenu || changes.outputFormat) {
+    await renderContextMenu();
   }
 });
 
 // Handle context menu clicks
 browser.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId === 'copy-selection-as-markdown' && tab?.id) {
+  if (info.menuItemId === CONTEXT_MENU_ID && tab?.id) {
     // console.log('[Copy LaTeX] Context menu clicked, tab ID:', tab.id);
 
     try {
