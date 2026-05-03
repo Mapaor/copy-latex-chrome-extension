@@ -1,0 +1,116 @@
+.hoverlatex-overlay.theme-light {
+	background: #fff;
+	color: #000;
+	box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+}
+.hoverlatex-overlay.theme-light.copied {
+	background: #e6ffe6;
+	color: #006400;
+}
+.hoverlatex-overlay.theme-light .check-icon {
+	color: #006400;
+}
+
+.hoverlatex-overlay.theme-dark {
+	background: #1e1e1e;
+	color: #f0f0f0;
+	box-shadow: 0 3px 10px rgba(0,0,0,0.6);
+}
+.hoverlatex-overlay.theme-dark.copied {
+	background: #052e16;
+	color: #dcfce7;
+}
+.hoverlatex-overlay.theme-dark .check-icon {
+	color: #dcfce7;
+}
+.hoverlatex-overlay {
+	position: absolute;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 14px;
+	border-radius: 8px;
+	font-size: 16px;
+	font-weight: 600;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+	z-index: 99999;
+	user-select: none;
+	box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+	opacity: 0;
+	transform: translateY(-4px);
+	transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
+	pointer-events: none; /* does not prevent clicks */
+}
+
+.hoverlatex-overlay.visible {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+.hoverlatex-overlay img {
+	width: 20px;
+	height: 20px;
+}
+
+.hoverlatex-overlay span {
+	white-space: nowrap;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.hoverlatex-overlay.copied {
+	background: #e6ffe6;
+	color: #006400;
+}
+
+.hoverlatex-overlay .check-icon {
+	color: #006400;
+	flex-shrink: 0;
+}
+
+.katex.hoverlatex-hover {
+	cursor: pointer;
+}
+
+mjx-container.hoverlatex-hover {
+	cursor: pointer;
+}
+
+[data-math].hoverlatex-hover {
+	cursor: pointer;
+}
+
+.MathJax_Display.hoverlatex-hover,
+.MathJax.hoverlatex-hover,
+.mjx-chtml.hoverlatex-hover,
+.MathJax_CHTML.hoverlatex-hover,
+.MJXc-display.hoverlatex-hover,
+.MathJax_MathML.hoverlatex-hover {
+	cursor: pointer;
+}
+
+/* Wikipedia math images cursor pointer */
+img.mwe-math.hoverlatex-hover,
+img.mwe-math-fallback-image-inline.hoverlatex-hover,
+img.mwe-math-fallback-image-display.hoverlatex-hover {
+	cursor: pointer;
+}
+
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+	.hoverlatex-overlay {
+		background: #1e1e1e;
+		color: #f0f0f0;
+		box-shadow: 0 3px 10px rgba(0,0,0,0.6);
+	}
+	.hoverlatex-overlay.copied {
+		background: #052e16;
+		color: #dcfce7;
+	}
+	.hoverlatex-overlay .check-icon {
+		color: #dcfce7;
+	}
+}
+
