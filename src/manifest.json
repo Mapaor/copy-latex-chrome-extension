@@ -20,20 +20,25 @@
       "matches": ["<all_urls>"],
       "js": [
         "lib/polyfill/browser-polyfill.min.js",
-        "content.js",
-        "lib/html2markdown/selection-to-markdown.js",
+        "content/utils/svg.js",
+        "content/utils/dom.js",
+        "content/detection.js",
+        "content/overlay.js",
+        "content/output.js",
+        "content/main.js",
+        "content/selection-to-markdown.js",
         "lib/html2markdown/turndown/turndown.js",
         "lib/html2markdown/turndown/turndown-plugin-gfm.js",
         "lib/latex2typst/tex2typst.min.js",
         "lib/markdown2typst/markdown2typst.browser.min.js"
       ],
-      "css": ["overlay.css"],
+      "css": ["content/overlay.css"],
       "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["mathjax-api.js"],
+      "resources": ["content/injected/mathjax-bridge.js"],
       "matches": ["<all_urls>"]
     }
   ]  
