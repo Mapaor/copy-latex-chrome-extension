@@ -184,7 +184,7 @@ function findMathJaxTex(el) {
 function createOverlay() {
   overlay = document.createElement('div');
   overlay.className = 'hoverlatex-overlay';
-  console.log('[Copy LaTeX] Overlay created. Initial class:', overlay.className);
+  // console.log('[Copy LaTeX] Overlay created. Initial class:', overlay.className);
 
   // Set theme class based on user preference
   setOverlayThemeClass().then(() => {
@@ -239,7 +239,7 @@ async function setOverlayThemeClass() {
   let theme = 'system';
   try {
     const result = await browser.storage.local.get('themeMode');
-    console.log('[Copy LaTeX] setOverlayThemeClass: browser.storage.local themeMode =', result.themeMode);
+    // console.log('[Copy LaTeX] setOverlayThemeClass: browser.storage.local themeMode =', result.themeMode);
     theme = result.themeMode || 'system';
   } catch (e) {
     // This can happen during navigation/refresh or extension reload: the content-script
@@ -249,29 +249,29 @@ async function setOverlayThemeClass() {
       console.warn('[Copy LaTeX] setOverlayThemeClass: error reading browser.storage.local', e);
     }
   }
-  console.log('[Copy LaTeX] setOverlayThemeClass: using theme =', theme);
+  // console.log('[Copy LaTeX] setOverlayThemeClass: using theme =', theme);
   if (theme === 'light') {
     overlay.classList.add('theme-light');
   } else if (theme === 'dark') {
     overlay.classList.add('theme-dark');
   }
-  // If system, do not add any theme class so CSS media query applies
+  // If system, do not add any theme class (prefers-color-scheme CSS media query will apply)
 }
 
 function showOverlay(target, tex) {
   if (!overlay) {
-    console.log('[Copy LaTeX] showOverlay: overlay does not exist, creating...');
+    // console.log('[Copy LaTeX] showOverlay: overlay does not exist, creating...');
     createOverlay();
   } else {
-    console.log('[Copy LaTeX] showOverlay: overlay exists, reusing. Classes:', overlay.className);
+    // console.log('[Copy LaTeX] showOverlay: overlay exists, reusing. Classes:', overlay.className);
   }
   // Only make overlay visible after theme is set
   setOverlayThemeClass().then(() => {
     // Remove .visible if present before theme is set
     overlay.classList.remove('visible');
-    console.log('[Copy LaTeX] showOverlay: after theme set. Classes:', overlay.className);
+    // console.log('[Copy LaTeX] showOverlay: after theme set. Classes:', overlay.className);
     const bg = window.getComputedStyle(overlay).backgroundColor;
-    console.log('[Copy LaTeX] showOverlay: computed background:', bg);
+    // console.log('[Copy LaTeX] showOverlay: computed background:', bg);
     overlay.dataset.tex = tex;
     const rect = target.getBoundingClientRect();
     const overlayWidth = overlay.offsetWidth;
@@ -508,8 +508,8 @@ document.addEventListener('click', (e) => handleCopyGesture(e, 'click(capture)')
 // NOW ALSO WITH TYPST SUPPORT ("Copy as Typst")
 
 // Listen for messages from background script
-browser.runtime.onMessage.addListener((message, sender) => {
-  if (message?.type !== 'convertHtmlToMarkdown') return undefined;
+browser.runtime.onMessage.addListener((message) => {
+  if (message?.type !== 'convertHtmlToMarkdown') return;
 
   return (async () => {
     // console.log('[Copy LaTeX] Converting HTML to Markdown, length:', message.html?.length);
@@ -517,31 +517,31 @@ browser.runtime.onMessage.addListener((message, sender) => {
     if (!result.ok) return result;
 
     // Check user's format preference
-    const storageResult = await browser.storage.local.get('outputFormat');
-    const format = storageResult.outputFormat || 'latex';
+    const { outputFormat = 'latex' } = await browser.storage.local.get('outputFormat');
+    
+    // If LaTeX mode (not Typst mode), simply return the Markdown result without conversion
+    if (outputFormat !== 'typst') return result;
 
-    // If Typst mode, convert markdown to typst
-    if (format === 'typst') {
-      if (!window.markdown2typst) {
-        console.error('[Copy LaTeX] markdown2typst library not loaded');
-        return { ok: false, error: 'markdown2typst library not loaded' };
-      }
-
-      try {
-        // Get the markdown from clipboard (we just copied it)
-        const markdown = await navigator.clipboard.readText();
-        const typst = window.markdown2typst(markdown);
-
-        // Copy typst back to clipboard
-        await navigator.clipboard.writeText(typst);
-        // console.log('[Copy LaTeX] Converted to Typst and copied');
-        return { ok: true, format: 'typst' };
-      } catch (error) {
-        console.error('[Copy LaTeX] Typst conversion error:', error);
-        return { ok: false, error: String(error) };
-      }
+    // If markdown2typst library not detected, return an error
+    if (!window.markdown2typst) {
+      console.error('[Copy LaTeX] markdown2typst library not loaded');
+      return { ok: false, error: 'markdown2typst library not loaded' };
     }
 
-    return result;
-  })();
+    try {
+      // Get the markdown from clipboard (we just copied it)
+      const markdown = await navigator.clipboard.readText();
+      const typst = window.markdown2typst(markdown);
+
+      // Copy typst back to clipboard
+      await navigator.clipboard.writeText(typst);
+      // console.log('[Copy LaTeX] Converted to Typst and copied');
+      
+      return { ok: true, format: 'typst' };
+    
+    } catch (error) {
+      console.error('[Copy LaTeX] Typst conversion error:', error);
+      return { ok: false, error: String(error) };
+    }
+  });
 });
