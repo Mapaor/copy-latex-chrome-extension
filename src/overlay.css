@@ -23,6 +23,12 @@
 .hoverlatex-overlay.theme-dark .check-icon {
   color: #dcfce7;
 }
+
+/* System theme (no explicit class) — light mode default */
+.hoverlatex-overlay:not(.theme-light):not(.theme-dark) {
+  background: #fff;
+  color: #000;
+}
 .hoverlatex-overlay {
   position: absolute;
   display: flex;

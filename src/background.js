@@ -1,37 +1,18 @@
 // Background script (service worker) for context menu
 
-// Promisified wrappers for contextMenus
-function removeAllMenus() {
-  return new Promise((resolve) => {
-    chrome.contextMenus.removeAll(() => resolve());
-  });
-}
-function createMenu(options) {
-  return new Promise((resolve, reject) => {
-    chrome.contextMenus.create(options, () => {
-      if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-      else resolve();
-    });
-  });
-}
-function updateMenu(id, props) {
-  return new Promise((resolve, reject) => {
-    chrome.contextMenus.update(id, props, () => {
-      if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-      else resolve();
-    });
-  });
-}
+// Provide `browser.*` with Promise-based APIs in Chrome.
+// (MV3 classic service worker; MV3 module workers can't use importScripts.)
+importScripts('lib/polyfill/browser-polyfill.min.js');
 
 // Update context menu title based on user preference
 async function updateContextMenuTitle() {
-  const result = await chrome.storage.local.get('outputFormat');
+  const result = await browser.storage.local.get('outputFormat');
   const format = result.outputFormat || 'latex';
   const title = format === 'typst'
     ? 'Copy as Typst'
     : 'Copy as Markdown (with LaTeX)';
   try {
-    await updateMenu('copy-selection-as-markdown', { title });
+    await browser.contextMenus.update('copy-selection-as-markdown', { title });
   } catch (e) {
     // Menu might not exist yet; ignore
   }
@@ -39,25 +20,25 @@ async function updateContextMenuTitle() {
 
 // Update context menu visibility based on user preference
 async function updateContextMenuVisibility() {
-  const result = await chrome.storage.local.get('showContextMenu');
+  const result = await browser.storage.local.get('showContextMenu');
   // Default to true if undefined
   const showContextMenu = (result.showContextMenu === undefined) ? true : !!result.showContextMenu;
 
   // Remove all context menus before (re)creating
   try {
-    await removeAllMenus();
+    await browser.contextMenus.removeAll();
   } catch (e) {
     console.warn('[Copy LaTeX] Error removing context menus:', e);
   }
 
   if (showContextMenu) {
-    const formatResult = await chrome.storage.local.get('outputFormat');
+    const formatResult = await browser.storage.local.get('outputFormat');
     const format = formatResult.outputFormat || 'latex';
     const title = format === 'typst'
       ? 'Copy as Typst'
       : 'Copy as Markdown (with LaTeX)';
     try {
-      await createMenu({
+      await browser.contextMenus.create({
         id: 'copy-selection-as-markdown',
         title,
         contexts: ['selection']
@@ -72,15 +53,15 @@ async function updateContextMenuVisibility() {
 
 
 // Create context menu on installation or startup
-chrome.runtime.onInstalled.addListener(() => {
+browser.runtime.onInstalled.addListener(() => {
   updateContextMenuVisibility();
 });
-chrome.runtime.onStartup.addListener(() => {
+browser.runtime.onStartup.addListener(() => {
   updateContextMenuVisibility();
 });
 
 // Storage change listener
-chrome.storage.onChanged.addListener(async (changes, areaName) => {
+browser.storage.onChanged.addListener(async (changes, areaName) => {
   if (areaName !== 'local') return;
   if (changes.showContextMenu) {
     await updateContextMenuVisibility();
@@ -91,13 +72,13 @@ chrome.storage.onChanged.addListener(async (changes, areaName) => {
 });
 
 // Handle context menu clicks
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+browser.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === 'copy-selection-as-markdown' && tab?.id) {
     // console.log('[Copy LaTeX] Context menu clicked, tab ID:', tab.id);
 
     try {
       // Execute script to get the selection HTML
-      const results = await chrome.scripting.executeScript({
+      const results = await browser.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => {
           // This function runs in the content script context
@@ -128,7 +109,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
           // console.log('[Copy LaTeX] Got selection HTML, length:', result.html.length);
 
           // Send message to content script to convert HTML to Markdown
-          const response = await chrome.tabs.sendMessage(tab.id, {
+          const response = await browser.tabs.sendMessage(tab.id, {
             type: 'convertHtmlToMarkdown',
             html: result.html
           });

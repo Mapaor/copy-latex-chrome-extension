@@ -13,13 +13,13 @@
     "default_title": "Copy LaTeX"
   },
   "background": {
-      "service_worker": "background.js",
-      "type": "module"
+      "service_worker": "background.js"
     },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
       "js": [
+        "lib/polyfill/browser-polyfill.min.js",
         "content.js",
         "lib/html2markdown/selection-to-markdown.js",
         "lib/html2markdown/turndown/turndown.js",

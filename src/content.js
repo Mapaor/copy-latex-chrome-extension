@@ -1,7 +1,7 @@
 // Inject page script for MathJax v3 extraction
 async function injectMathJaxPageScript() {
   try {
-    const scriptUrl = chrome.runtime.getURL('mathjax-api.js');
+    const scriptUrl = browser.runtime.getURL('mathjax-api.js');
     
     const script = document.createElement('script');
     script.src = scriptUrl;
@@ -238,11 +238,16 @@ async function setOverlayThemeClass() {
   overlay.classList.remove('theme-light', 'theme-dark');
   let theme = 'system';
   try {
-    const result = await chrome.storage.local.get('themeMode');
-    console.log('[Copy LaTeX] setOverlayThemeClass: chrome.storage.local themeMode =', result.themeMode);
+    const result = await browser.storage.local.get('themeMode');
+    console.log('[Copy LaTeX] setOverlayThemeClass: browser.storage.local themeMode =', result.themeMode);
     theme = result.themeMode || 'system';
   } catch (e) {
-    console.warn('[Copy LaTeX] setOverlayThemeClass: error reading chrome.storage.local', e);
+    // This can happen during navigation/refresh or extension reload: the content-script
+    // context is torn down while an async storage call is in-flight.
+    const message = (e && typeof e === 'object' && 'message' in e) ? String(e.message) : String(e);
+    if (!message.includes('Extension context invalidated')) {
+      console.warn('[Copy LaTeX] setOverlayThemeClass: error reading browser.storage.local', e);
+    }
   }
   console.log('[Copy LaTeX] setOverlayThemeClass: using theme =', theme);
   if (theme === 'light') {
@@ -260,17 +265,10 @@ function showOverlay(target, tex) {
   } else {
     console.log('[Copy LaTeX] showOverlay: overlay exists, reusing. Classes:', overlay.className);
   }
-  // Only make overlay visible after theme is set and theme class is present
+  // Only make overlay visible after theme is set
   setOverlayThemeClass().then(() => {
     // Remove .visible if present before theme is set
     overlay.classList.remove('visible');
-    // Only add .visible if a theme class is present or system mode is not used
-    const hasTheme = overlay.classList.contains('theme-light') || overlay.classList.contains('theme-dark');
-    if (!hasTheme && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      // If system mode and dark, do not show overlay until theme is set
-      console.warn('[Copy LaTeX] Overlay: system dark mode detected, not showing overlay until theme is set');
-      return;
-    }
     console.log('[Copy LaTeX] showOverlay: after theme set. Classes:', overlay.className);
     const bg = window.getComputedStyle(overlay).backgroundColor;
     console.log('[Copy LaTeX] showOverlay: computed background:', bg);
@@ -284,32 +282,6 @@ function showOverlay(target, tex) {
     overlay.classList.add('visible');
   });
 }
-
-// // Synchronous theme class setter for overlay (DEPRECATED)
-// function setOverlayThemeClassSync() {
-//   if (!overlay) return;
-//   overlay.classList.remove('theme-light', 'theme-dark');
-//   let theme = 'system';
-//   try {
-//     // Try to get theme from chrome.storage.local synchronously if possible
-//     if (window.localStorage && window.localStorage.getItem) {
-//       const stored = window.localStorage.getItem('themeMode');
-//       console.log('[Copy LaTeX] setOverlayThemeClassSync: localStorage themeMode =', stored);
-//       if (stored) theme = stored;
-//     } else {
-//       console.log('[Copy LaTeX] setOverlayThemeClassSync: window.localStorage not available');
-//     }
-//   } catch (e) {
-//     console.warn('[Copy LaTeX] setOverlayThemeClassSync: error reading localStorage', e);
-//   }
-//   console.log('[Copy LaTeX] setOverlayThemeClassSync: using theme =', theme);
-//   if (theme === 'light') {
-//     overlay.classList.add('theme-light');
-//   } else if (theme === 'dark') {
-//     overlay.classList.add('theme-dark');
-//   }
-//   // If system, do not add any theme class so CSS media query applies
-// }
 
 function hideOverlay() {
   if (overlay) {
@@ -338,7 +310,7 @@ async function copyLatex(tex) {
     if (!overlay) createOverlay();
 
     // Get user's format preference
-    const result = await chrome.storage.local.get('outputFormat');
+    const result = await browser.storage.local.get('outputFormat');
     const format = result.outputFormat || 'latex';
     
     // Convert to Typst if selected
@@ -536,43 +508,40 @@ document.addEventListener('click', (e) => handleCopyGesture(e, 'click(capture)')
 // NOW ALSO WITH TYPST SUPPORT ("Copy as Typst")
 
 // Listen for messages from background script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'convertHtmlToMarkdown') {
+browser.runtime.onMessage.addListener((message, sender) => {
+  if (message?.type !== 'convertHtmlToMarkdown') return undefined;
+
+  return (async () => {
     // console.log('[Copy LaTeX] Converting HTML to Markdown, length:', message.html?.length);
-    convertAndCopyHtml(message.html).then(async result => {
-      if (result.ok) {
-        // Check user's format preference
-        const storageResult = await chrome.storage.local.get('outputFormat');
-        const format = storageResult.outputFormat || 'latex';
-        
-        // If Typst mode, convert markdown to typst
-        if (format === 'typst') {
-          try {
-            if (!window.markdown2typst) {
-              console.error('[Copy LaTeX] markdown2typst library not loaded');
-              sendResponse({ ok: false, error: 'markdown2typst library not loaded' });
-              return;
-            }
-            
-            // Get the markdown from clipboard (we just copied it)
-            const markdown = await navigator.clipboard.readText();
-            const typst = window.markdown2typst(markdown);
-            
-            // Copy typst back to clipboard
-            await navigator.clipboard.writeText(typst);
-            // console.log('[Copy LaTeX] Converted to Typst and copied');
-            sendResponse({ ok: true, format: 'typst' });
-          } catch (error) {
-            console.error('[Copy LaTeX] Typst conversion error:', error);
-            sendResponse({ ok: false, error: String(error) });
-          }
-        } else {
-          sendResponse(result);
-        }
-      } else {
-        sendResponse(result);
+    const result = await convertAndCopyHtml(message.html);
+    if (!result.ok) return result;
+
+    // Check user's format preference
+    const storageResult = await browser.storage.local.get('outputFormat');
+    const format = storageResult.outputFormat || 'latex';
+
+    // If Typst mode, convert markdown to typst
+    if (format === 'typst') {
+      if (!window.markdown2typst) {
+        console.error('[Copy LaTeX] markdown2typst library not loaded');
+        return { ok: false, error: 'markdown2typst library not loaded' };
       }
-    });
-    return true;  // Keep channel open for async response
-  }
+
+      try {
+        // Get the markdown from clipboard (we just copied it)
+        const markdown = await navigator.clipboard.readText();
+        const typst = window.markdown2typst(markdown);
+
+        // Copy typst back to clipboard
+        await navigator.clipboard.writeText(typst);
+        // console.log('[Copy LaTeX] Converted to Typst and copied');
+        return { ok: true, format: 'typst' };
+      } catch (error) {
+        console.error('[Copy LaTeX] Typst conversion error:', error);
+        return { ok: false, error: String(error) };
+      }
+    }
+
+    return result;
+  })();
 });
