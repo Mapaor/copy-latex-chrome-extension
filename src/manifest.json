@@ -32,9 +32,9 @@
     }
   ],
   "web_accessible_resources": [
-  {
-    "resources": ["mathjax-api.js"],
-    "matches": ["<all_urls>"]
-  }
-]  
+    {
+      "resources": ["mathjax-api.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]  
 }
