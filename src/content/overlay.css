@@ -100,16 +100,16 @@ img.mwe-math-fallback-image-display.hoverlatex-hover {
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
-	.hoverlatex-overlay {
+	.hoverlatex-overlay:not(.theme-light):not(.theme-dark) {
 		background: #1e1e1e;
 		color: #f0f0f0;
 		box-shadow: 0 3px 10px rgba(0,0,0,0.6);
 	}
-	.hoverlatex-overlay.copied {
+	.hoverlatex-overlay:not(.theme-light):not(.theme-dark).copied {
 		background: #052e16;
 		color: #dcfce7;
 	}
-	.hoverlatex-overlay .check-icon {
+	.hoverlatex-overlay:not(.theme-light):not(.theme-dark) .check-icon {
 		color: #dcfce7;
 	}
 }
