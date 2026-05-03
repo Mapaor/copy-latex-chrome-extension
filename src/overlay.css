@@ -1,7 +1,7 @@
 .hoverlatex-overlay.theme-light {
   background: #fff;
   color: #000;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+  /* box-shadow: 0 3px 10px rgba(0,0,0,0.25); */
 }
 .hoverlatex-overlay.theme-light.copied {
   background: #e6ffe6;
@@ -14,7 +14,7 @@
 .hoverlatex-overlay.theme-dark {
   background: #1e1e1e;
   color: #f0f0f0;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.6);
+  /* box-shadow: 0 3px 10px rgba(0,0,0,0.6); */
 }
 .hoverlatex-overlay.theme-dark.copied {
   background: #052e16;
@@ -28,8 +28,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #fff;
-  color: #000;
+  /* No background or color here! Only in theme classes. */
   padding: 10px 14px;
   border-radius: 8px;
   font-size: 16px;
@@ -37,10 +36,10 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   z-index: 99999;
   user-select: none;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+  /* box-shadow: 0 3px 10px rgba(0,0,0,0.25); */
   opacity: 0;
   transform: translateY(-4px);
-  transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
+  /* transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out; */
   pointer-events: none; /* does not prevent clicks */
 }
 
@@ -102,16 +101,16 @@ img.mwe-math-fallback-image-display.hoverlatex-hover {
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
-  .hoverlatex-overlay {
+  .hoverlatex-overlay:not(.theme-light):not(.theme-dark) {
     background: #1e1e1e;
     color: #f0f0f0;
     box-shadow: 0 3px 10px rgba(0,0,0,0.6);
   }
-  .hoverlatex-overlay.copied {
+  .hoverlatex-overlay.copied:not(.theme-light):not(.theme-dark) {
     background: #052e16;
     color: #dcfce7;
   }
-  .hoverlatex-overlay .check-icon {
+  .hoverlatex-overlay .check-icon:not(.theme-light):not(.theme-dark) {
     color: #dcfce7;
   }
 }

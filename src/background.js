@@ -1,15 +1,40 @@
 // Background script (service worker) for context menu
 
+// Promisified wrappers for contextMenus
+function removeAllMenus() {
+  return new Promise((resolve) => {
+    chrome.contextMenus.removeAll(() => resolve());
+  });
+}
+function createMenu(options) {
+  return new Promise((resolve, reject) => {
+    chrome.contextMenus.create(options, () => {
+      if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+      else resolve();
+    });
+  });
+}
+function updateMenu(id, props) {
+  return new Promise((resolve, reject) => {
+    chrome.contextMenus.update(id, props, () => {
+      if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+      else resolve();
+    });
+  });
+}
+
 // Update context menu title based on user preference
 async function updateContextMenuTitle() {
   const result = await chrome.storage.local.get('outputFormat');
   const format = result.outputFormat || 'latex';
-  
-  const title = format === 'typst' 
-    ? 'Copy as Typst' 
+  const title = format === 'typst'
+    ? 'Copy as Typst'
     : 'Copy as Markdown (with LaTeX)';
-  
-  await chrome.contextMenus.update('copy-selection-as-markdown', { title });
+  try {
+    await updateMenu('copy-selection-as-markdown', { title });
+  } catch (e) {
+    // Menu might not exist yet; ignore
+  }
 }
 
 // Update context menu visibility based on user preference
@@ -18,57 +43,52 @@ async function updateContextMenuVisibility() {
   // Default to true if undefined
   const showContextMenu = (result.showContextMenu === undefined) ? true : !!result.showContextMenu;
 
-  // Remove the menu item if it exists
-  chrome.contextMenus.remove('copy-selection-as-markdown').catch(() => {});
+  // Remove all context menus before (re)creating
+  try {
+    await removeAllMenus();
+  } catch (e) {
+    console.warn('[Copy LaTeX] Error removing context menus:', e);
+  }
 
   if (showContextMenu) {
     const formatResult = await chrome.storage.local.get('outputFormat');
     const format = formatResult.outputFormat || 'latex';
-    const title = format === 'typst' 
-      ? 'Copy as Typst' 
+    const title = format === 'typst'
+      ? 'Copy as Typst'
       : 'Copy as Markdown (with LaTeX)';
-
-    chrome.contextMenus.create({
-      id: 'copy-selection-as-markdown',
-      title: title,
-      contexts: ['selection']
-    });
+    try {
+      await createMenu({
+        id: 'copy-selection-as-markdown',
+        title,
+        contexts: ['selection']
+      });
+    } catch (e) {
+      console.error('[Copy LaTeX] Error creating context menu:', e);
+    }
+  } else {
+    // No need to do anything else since we already removed all menus
   }
 }
 
-// Create context menu on installation
-chrome.runtime.onInstalled.addListener(async () => {
-  const result = await chrome.storage.local.get('outputFormat');
-  const format = result.outputFormat || 'latex';
-  
-  const title = format === 'typst' 
-    ? 'Copy as Typst' 
-    : 'Copy as Markdown (with LaTeX)';
-  
-  chrome.contextMenus.create({
-    id: 'copy-selection-as-markdown',
-    title: title,
-    contexts: ['selection']
-  });
-  // console.log('[Copy LaTeX] Context menu created');
+
+// Create context menu on installation or startup
+chrome.runtime.onInstalled.addListener(() => {
+  updateContextMenuVisibility();
+});
+chrome.runtime.onStartup.addListener(() => {
+  updateContextMenuVisibility();
 });
 
-// Listen for storage changes to update context menu title
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && changes.outputFormat) {
-    updateContextMenuTitle();
+// Storage change listener
+chrome.storage.onChanged.addListener(async (changes, areaName) => {
+  if (areaName !== 'local') return;
+  if (changes.showContextMenu) {
+    await updateContextMenuVisibility();
+  }
+  if (changes.outputFormat) {
+    await updateContextMenuTitle();
   }
 });
-
-// Update context menu visibility on storage change
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && changes.showContextMenu) {
-    updateContextMenuVisibility();
-  }
-});
-
-// Ensure context menu visibility is correct on startup
-updateContextMenuVisibility();
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -116,7 +136,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
           // console.log('[Copy LaTeX] Markdown conversion response:', response);
 
           if (response && response.ok) {
-            console.log('[Copy LaTeX] Copy successful');
+            // console.log('[Copy LaTeX] Copy successful');
           } else {
             console.error('[Copy LaTeX] Copy failed:', response?.error);
           }
