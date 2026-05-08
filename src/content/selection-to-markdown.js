@@ -1,11 +1,33 @@
 // Convert HTML to Markdown and copy to clipboard (main function)
 // Kept as a classic script (not ESM) for Firefox MV3 compatibility.
-// Only exposes `convertAndCopyHtml` on globalThis.
+// Exposes `convertAndCopyHtml` and `convertHtmlToLatexMarkdown` on globalThis.
 
 (() => {
+  const MATH_SELECTOR = [
+    '.katex',
+    '[data-math]',
+    'mjx-container',
+    '.MathJax_Display',
+    '.MJXc-display',
+    '.MathJax',
+    '.mjx-chtml',
+    '.MathJax_CHTML',
+    '.MathJax_MathML',
+    'img.mwe-math',
+    'img.mwe-math-fallback-image-inline',
+    'img.mwe-math-fallback-image-display',
+  ].join(', ');
+  const COPY_SHORTCUT_WINDOW_MS = 1200;
+
+  const copyShortcutState = {
+    enabled: true,
+    outputFormat: 'latex',
+    lastKeyboardCopyTs: 0,
+  };
+
   async function convertAndCopyHtml(html) {
     try {
-      const markdown = await convertHtmlToLatexMarkdown(html);
+      const markdown = convertHtmlToLatexMarkdown(html);
 
       if (!markdown) {
         return { ok: false, error: 'No content' };
@@ -20,7 +42,7 @@
   }
 
   // Convert HTML to Markdown
-  async function convertHtmlToLatexMarkdown(html) {
+  function convertHtmlToLatexMarkdown(html) {
     const container = document.createElement('div');
     // innerHTML usage here is safe: the 'html' parameter comes from trusted sources
     // (user selection on the page), and we immediately process it in a controlled way
@@ -28,21 +50,7 @@
     container.innerHTML = html;
 
     // 1) We detect all math elements
-    const mathElements = [
-      ...Array.from(container.querySelectorAll('.katex')),
-      ...Array.from(container.querySelectorAll('[data-math]')),
-      ...Array.from(container.querySelectorAll('mjx-container')),
-      ...Array.from(
-        container.querySelectorAll(
-          '.MathJax_Display, .MJXc-display, .MathJax, .mjx-chtml, .MathJax_CHTML, .MathJax_MathML'
-        )
-      ),
-      ...Array.from(
-        container.querySelectorAll(
-          'img.mwe-math, img.mwe-math-fallback-image-inline, img.mwe-math-fallback-image-display'
-        )
-      ),
-    ];
+    const mathElements = Array.from(container.querySelectorAll(MATH_SELECTOR));
 
     // 2) Replace math elements with LaTeX markers ($..$ or $$...$$)
     mathElements.forEach((el) => {
@@ -138,7 +146,14 @@
   // TODO One day: Unify this detection logic using the same as detection.js
   function extractLatexFromElement(el) {
     // Wikipedia
-    if (el.tagName === 'IMG' && el.classList.contains('mwe-math')) {
+    if (
+      el.tagName === 'IMG' &&
+      (
+        el.classList.contains('mwe-math') ||
+        el.classList.contains('mwe-math-fallback-image-inline') ||
+        el.classList.contains('mwe-math-fallback-image-display')
+      )
+    ) {
       const alt = el.getAttribute('alt');
       if (alt) {
         const match = alt.match(/^\{\\displaystyle\s*([\s\S]*?)\}$/);
@@ -226,6 +241,118 @@
     return 'inline';
   }
 
+  function cloneCurrentSelection() {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;
+
+    const container = document.createElement('div');
+    for (let i = 0; i < selection.rangeCount; i++) {
+      container.appendChild(selection.getRangeAt(i).cloneContents());
+    }
+
+    return container;
+  }
+
+  function selectionContainsSupportedMath(container) {
+    return !!container.querySelector(MATH_SELECTOR);
+  }
+
+  function getElementFromNode(node) {
+    if (!node) return null;
+    if (node instanceof Element) return node;
+    return node.parentElement || null;
+  }
+
+  function isEditableNode(node) {
+    const el = getElementFromNode(node);
+    if (!el) return false;
+    if (el.isContentEditable) return true;
+    return !!el.closest('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]');
+  }
+
+  function shouldHandleCopyShortcut(event) {
+    if (!copyShortcutState.enabled) return false;
+    if (!event.clipboardData) return false;
+    if (event.defaultPrevented) return false;
+    if (Date.now() - copyShortcutState.lastKeyboardCopyTs > COPY_SHORTCUT_WINDOW_MS) return false;
+    if (isEditableNode(event.target) || isEditableNode(document.activeElement)) return false;
+
+    const selection = window.getSelection();
+    if (!selection) return false;
+    if (isEditableNode(selection.anchorNode) || isEditableNode(selection.focusNode)) return false;
+
+    return true;
+  }
+
+  function convertMarkdownToConfiguredOutput(markdown) {
+    if (copyShortcutState.outputFormat !== 'typst') return markdown;
+    if (!window.markdown2typst) throw new Error('markdown2typst library not loaded');
+    return window.markdown2typst(markdown);
+  }
+
+  function handleCopyShortcut(event) {
+    if (!shouldHandleCopyShortcut(event)) return;
+
+    const container = cloneCurrentSelection();
+    if (!container || !selectionContainsSupportedMath(container)) return;
+
+    try {
+      const markdown = convertHtmlToLatexMarkdown(container.innerHTML);
+      if (!markdown) return;
+
+      const outputText = convertMarkdownToConfiguredOutput(markdown);
+      if (!outputText) return;
+
+      event.clipboardData.setData('text/plain', outputText);
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    } catch (error) {
+      console.error('[Copy LaTeX] Error handling copy shortcut:', error);
+    }
+  }
+
+  function handleCopyShortcutKeydown(event) {
+    const key = String(event.key || '').toLowerCase();
+    const isCopyKey = key === 'c' || event.code === 'KeyC';
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && isCopyKey) {
+      copyShortcutState.lastKeyboardCopyTs = Date.now();
+    }
+  }
+
+  async function loadCopyShortcutConfig() {
+    if (typeof browser === 'undefined') return;
+
+    try {
+      const result = await browser.storage.local.get(['enableCopyShortcut', 'outputFormat']);
+      copyShortcutState.enabled =
+        result.enableCopyShortcut === undefined ? true : !!result.enableCopyShortcut;
+      copyShortcutState.outputFormat = result.outputFormat || 'latex';
+    } catch (error) {
+      console.error('[Copy LaTeX] Error loading copy shortcut config:', error);
+    }
+  }
+
+  function installCopyShortcut() {
+    document.addEventListener('keydown', handleCopyShortcutKeydown, { capture: true });
+    document.addEventListener('copy', handleCopyShortcut, { capture: true });
+
+    if (typeof browser === 'undefined') return;
+
+    loadCopyShortcutConfig();
+    browser.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== 'local') return;
+      if (changes.enableCopyShortcut) {
+        copyShortcutState.enabled =
+          changes.enableCopyShortcut.newValue === undefined
+            ? true
+            : !!changes.enableCopyShortcut.newValue;
+      }
+      if (changes.outputFormat) {
+        copyShortcutState.outputFormat = changes.outputFormat.newValue || 'latex';
+      }
+    });
+  }
+
   // Copy text to clipboard with fallback methods
   async function copyToClipboard(text) {
     class KnownFailureError extends Error {}
@@ -240,7 +367,7 @@
         });
       } catch (e) {
         if (e instanceof TypeError) {
-          // Firefox: clipboard-write is not queryable, just try to write          await navigator.clipboard.writeText(t);
+          // Firefox: clipboard-write is not queryable, just try to write.
           await navigator.clipboard.writeText(t);
           return true;
         }
@@ -297,6 +424,8 @@
     }
   }
 
-  // Expose only the single entrypoint
+  // Expose conversion entrypoints for the background message handler and tests.
   globalThis.convertAndCopyHtml = convertAndCopyHtml;
+  globalThis.convertHtmlToLatexMarkdown = convertHtmlToLatexMarkdown;
+  installCopyShortcut();
 })();
