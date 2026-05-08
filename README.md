@@ -27,6 +27,8 @@ Version 1.6: A new config button in the popup UI that allows some basic customiz
 #### Copy as Markdown
 <img src="assets/gif-demo-copy-as-markdown.gif" alt="Demo-Markdown" width="800">
 
+For selections that include supported math, Ctrl/Cmd+C can also copy the converted output directly. This can be disabled from the popup settings.
+
 You can use [https://markdown-preview-katex.vercel.app/](https://markdown-preview-katex.vercel.app/) to test this feature.
 
 #### Copy as Typst
