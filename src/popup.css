@@ -74,7 +74,7 @@ body {
 
 body.expanded {
   max-height: 600px;
-  min-height: 220px; /* El que  cal anar modificant al afegir opcions de configuració (que ocupen espai vertical) */
+  min-height: 250px; /* El que  cal anar modificant al afegir opcions de configuració (que ocupen espai vertical) */
   height: auto;
   overflow: visible;
 }

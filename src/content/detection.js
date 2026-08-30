@@ -108,6 +108,38 @@
 		return null;
 	}
 
+	function stripTexDelimiters(tex) {
+		const value = tex?.trim();
+		if (!value) return null;
+
+		const delimiterPairs = [
+			['\\[', '\\]'],
+			['\\(', '\\)'],
+			['$$', '$$'],
+			['$', '$'],
+		];
+
+		for (const [opening, closing] of delimiterPairs) {
+			if (value.startsWith(opening) && value.endsWith(closing)) {
+				return value.slice(opening.length, -closing.length).trim() || null;
+			}
+		}
+
+		return value;
+	}
+
+	function findZhihuMathElementFromEventTarget(target) {
+		if (!(target instanceof Element)) return null;
+		return target.closest?.('.ztext-math[data-tex]') || null;
+	}
+
+	function findZhihuTex(el) {
+		const mathEl = el?.closest?.('.ztext-math[data-tex]');
+		if (!mathEl) return null;
+
+		return stripTexDelimiters(mathEl.getAttribute('data-tex'));
+	}
+
 	function findKaTeXElementFromEventTarget(target) {
 		if (!(target instanceof Element)) return null;
 
@@ -181,10 +213,11 @@
 		findWikipediaTex,
 		findMathJaxV3Tex,
 		findAnnotationTex,
+		findZhihuMathElementFromEventTarget,
+		findZhihuTex,
 		findKaTeXElementFromEventTarget,
 		findMathJaxTex,
 		findGoogleAIMathTex,
 		findChatGPTTex,
 	};
 })();
-

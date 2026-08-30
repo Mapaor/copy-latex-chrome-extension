@@ -1,6 +1,6 @@
 # CopyLaTeX
 
-A Chrome (and [Firefox](#firefox-version)) extension that lets you quickly copy LaTeX code (KaTeX or MathJax) from equations displayed on websites like ChatGPT, DeepSeek, or any blog using mathematical equations. It works simply by hovering over an equation and clicking to copy the LaTeX expression.
+A Chrome (and [Firefox](#firefox-version)) extension that lets you quickly copy LaTeX code (KaTeX or MathJax) from equations displayed on websites like ChatGPT, DeepSeek, Zhihu, or any blog using mathematical equations. It works simply by hovering over an equation and clicking to copy the LaTeX expression.
 
 Version 1.1: Now it also works with with Wikipedia and Wikiwand images.
 
@@ -26,6 +26,8 @@ Version 1.6: A new config button in the popup UI that allows some basic customiz
 
 #### Copy as Markdown
 <img src="assets/gif-demo-copy-as-markdown.gif" alt="Demo-Markdown" width="800">
+
+For selections that include supported math, Ctrl/Cmd+C can also copy the converted output directly. This can be disabled from the popup settings.
 
 You can use [https://markdown-preview-katex.vercel.app/](https://markdown-preview-katex.vercel.app/) to test this feature.
 
@@ -54,6 +56,7 @@ This is done in `chrome://extensions` in the extension 'Details'.
 
 - https://chatgpt.com/*
 - https://chat.deepseek.com/*
+- https://*.zhihu.com/*
 - https://math.stackexchange.com/*
 - https://physics.stackexchange.com/*
 - https://proofwiki.org/*

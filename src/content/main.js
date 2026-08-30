@@ -53,6 +53,15 @@
 			return;
 		}
 
+		const zhihuMath = ns.detect.findZhihuMathElementFromEventTarget(e.target);
+		if (zhihuMath) {
+			const tex = ns.detect.findZhihuTex(zhihuMath);
+			if (tex) {
+				showOverlayForTarget(zhihuMath, tex);
+				return;
+			}
+		}
+
 		const katex = ns.detect.findKaTeXElementFromEventTarget(e.target);
 		if (katex) {
 			const tex = ns.detect.findChatGPTTex(katex) || ns.detect.findAnnotationTex(katex);
@@ -111,6 +120,7 @@
 		}
 
 		if (
+			related?.closest?.('.ztext-math[data-tex]') ||
 			related?.closest?.('[data-math]') ||
 			related?.closest?.('[data-xpm-latex]') ||
 			related?.closest?.('[data-xpm-copy-root]') ||
@@ -165,6 +175,15 @@
 			return;
 		}
 
+		const zhihuMath = ns.detect.findZhihuMathElementFromEventTarget(e.target);
+		if (zhihuMath) {
+			const tex = ns.detect.findZhihuTex(zhihuMath);
+			if (tex) {
+				ns.output.copyLatex(tex);
+				return;
+			}
+		}
+
 		const katex = ns.detect.findKaTeXElementFromEventTarget(e.target);
 		if (katex) {
 			const tex = ns.detect.findChatGPTTex(katex) || ns.detect.findAnnotationTex(katex);
@@ -208,4 +227,3 @@
 	document.addEventListener('pointerdown', (e) => handleCopyGesture(e), { capture: true });
 	document.addEventListener('click', (e) => handleCopyGesture(e), { capture: true });
 })();
-

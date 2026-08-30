@@ -77,4 +77,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   contextMenuOptionCheckbox.addEventListener('change', async () => {
     await browser.storage.local.set({ showContextMenu: contextMenuOptionCheckbox.checked });
   });
+
+  // Ctrl/Cmd+C shortcut option checkbox logic
+  const copyShortcutOptionCheckbox = document.getElementById('copyShortcutOption');
+  const shortcutResult = await browser.storage.local.get('enableCopyShortcut');
+  const enableCopyShortcut = shortcutResult.enableCopyShortcut;
+  copyShortcutOptionCheckbox.checked =
+    enableCopyShortcut === undefined ? true : !!enableCopyShortcut;
+  copyShortcutOptionCheckbox.addEventListener('change', async () => {
+    await browser.storage.local.set({ enableCopyShortcut: copyShortcutOptionCheckbox.checked });
+  });
 });
