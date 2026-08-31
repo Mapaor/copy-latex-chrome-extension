@@ -98,6 +98,7 @@
 	}
 
 	function showOverlay(target, tex) {
+		const rect = target.getBoundingClientRect();
 		let overlay = getOverlay();
 		if (!overlay) {
       // console.log('[Copy LaTeX] showOverlay: overlay does not exist, creating...');
@@ -110,12 +111,8 @@
 		setOverlayThemeClass();
 		overlay.dataset.tex = tex;
 
-		const rect = target.getBoundingClientRect();
-		const overlayWidth = overlay.offsetWidth;
-		const top = rect.top + window.scrollY - overlay.offsetHeight - 8;
-		const left = rect.left + window.scrollX + rect.width / 2 - overlayWidth / 2;
-		overlay.style.top = `${top}px`;
-		overlay.style.left = `${left}px`;
+		overlay.style.top = `${rect.top}px`;
+		overlay.style.left = `${rect.left + rect.width / 2}px`;
 		overlay.classList.add('visible');
 	}
 

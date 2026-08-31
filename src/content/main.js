@@ -7,6 +7,22 @@
 		lastCopyGestureTs: 0,
 		lastCopiedTex: null,
 	};
+	const MATH_CANDIDATE_SELECTOR = [
+		'.katex',
+		'[data-math]',
+		'[data-xpm-latex]',
+		'[data-xpm-copy-root]',
+		'mjx-container',
+		'.MathJax_Display',
+		'.MJXc-display',
+		'.MathJax',
+		'.mjx-chtml',
+		'.MathJax_CHTML',
+		'.MathJax_MathML',
+		'img.mwe-math',
+		'img.mwe-math-fallback-image-inline',
+		'img.mwe-math-fallback-image-display',
+	].join(',');
 
 	async function injectMathJaxPageScript() {
 		try {
@@ -32,12 +48,38 @@
 	});
 
 	function showOverlayForTarget(target, tex) {
+		const overlay = ns.state.overlay;
+		if (
+			ns.state.currentTarget === target &&
+			overlay?.classList.contains('visible') &&
+			overlay.dataset.tex === tex
+		) {
+			return;
+		}
+
+		const previousTarget = ns.state.currentTarget;
+		ns.output.showOverlay(target, tex);
+		if (previousTarget && previousTarget !== target) {
+			previousTarget.classList.remove('hoverlatex-hover');
+		}
 		ns.state.currentTarget = target;
 		target.classList.add('hoverlatex-hover');
-		ns.output.showOverlay(target, tex);
+	}
+
+	function hideCurrentOverlay() {
+		const currentTarget = ns.state.currentTarget;
+		if (!currentTarget) return;
+		currentTarget.classList.remove('hoverlatex-hover');
+		ns.output.hideOverlay();
+		ns.state.currentTarget = null;
+	}
+
+	function isMathCandidate(target) {
+		return target instanceof Element && Boolean(target.closest(MATH_CANDIDATE_SELECTOR));
 	}
 
 	document.addEventListener('mouseover', (e) => {
+		if (!isMathCandidate(e.target)) return;
 		if (ns.detect.isWikipedia()) {
 			const wikipediaTex = ns.detect.findWikipediaTex(e.target);
 			if (wikipediaTex) {
@@ -131,10 +173,11 @@
 			return;
 		}
 
-		currentTarget.classList.remove('hoverlatex-hover');
-		ns.output.hideOverlay();
-		ns.state.currentTarget = null;
+		hideCurrentOverlay();
 	});
+
+	document.addEventListener('scroll', hideCurrentOverlay, { capture: true, passive: true });
+	window.addEventListener('resize', hideCurrentOverlay, { passive: true });
 
 	function shouldHandleGesture(e) {
 		if (typeof e.button === 'number' && e.button !== 0) return false;
@@ -150,6 +193,7 @@
 			if (tex && tex.trim()) ns.output.copyLatex(tex.trim());
 			return;
 		}
+		if (!isMathCandidate(e.target)) return;
 
 		if (ns.detect.isWikipedia()) {
 			const wikipediaTex = ns.detect.findWikipediaTex(e.target);

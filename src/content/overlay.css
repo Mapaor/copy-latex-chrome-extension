@@ -24,7 +24,7 @@
 	color: #dcfce7;
 }
 .hoverlatex-overlay {
-	position: absolute;
+	position: fixed;
 	display: flex;
 	align-items: center;
 	gap: 8px;
@@ -37,14 +37,15 @@
 	user-select: none;
 	box-shadow: 0 3px 10px rgba(0,0,0,0.25);
 	opacity: 0;
-	transform: translateY(-4px);
+	transform: translate(-50%, calc(-100% - 12px));
 	transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
+	contain: layout;
 	pointer-events: none; /* does not prevent clicks */
 }
 
 .hoverlatex-overlay.visible {
 	opacity: 1;
-	transform: translateY(0);
+	transform: translate(-50%, calc(-100% - 8px));
 }
 
 .hoverlatex-overlay img {
