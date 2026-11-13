@@ -271,7 +271,12 @@
 		}
 
 		if (!tex) return null;
-		return { element: el, tex, displayMode: getDisplayMode(el, kind), kind };
+		const displayMode = getDisplayMode(el, kind);
+		const overlayTarget =
+			kind === 'wikipedia' && displayMode === 'display' && isHtmlElementNamed(el, 'mjx-container')
+				? el.querySelector('svg') || el
+				: el;
+		return { element: el, overlayTarget, tex, displayMode, kind };
 	}
 
 	function detectFromTarget(target) {

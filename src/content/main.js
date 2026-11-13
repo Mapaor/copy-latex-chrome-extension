@@ -35,7 +35,7 @@
 	function showOverlayForDetection(detection) {
 		ns.state.currentTarget = detection.element;
 		detection.element.classList.add('hoverlatex-hover');
-		ns.output.showOverlay(detection.element, detection.tex);
+		ns.output.showOverlay(detection.overlayTarget || detection.element, detection.tex);
 	}
 
 	// Hover and direct copy use the same candidate selection and extraction logic.
