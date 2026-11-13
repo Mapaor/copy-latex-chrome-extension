@@ -8,6 +8,7 @@
 		lastCopiedTex: null,
 	};
 
+	// The page-world bridge is needed to read MathJax v3/v4's source through its API.
 	async function injectMathJaxPageScript() {
 		try {
 			const scriptUrl = browser.runtime.getURL('content/injected/mathjax-bridge.js');
@@ -21,191 +22,75 @@
 
 	injectMathJaxPageScript();
 
-  // Listen for messages from the injected page script to receive LaTeX code (in case of MathJax v3 and v4)
+	// Receive MathJax source from the page-world bridge; keep it in shared content state.
 	window.addEventListener('message', (event) => {
 		if (event.source !== window) return;
 		if (event.data && event.data.type === 'CopyLaTeX_MathJaxV3') {
 			ns.state.lastMathJaxV3Latex = event.data.latex;
-			// Keep compatibility with content/selection-to-markdown.js
+			// Keep the legacy page-facing value in sync with the shared detector state.
 			window.__lastMathJaxV3Latex = event.data.latex;
 		}
 	});
 
-	function showOverlayForTarget(target, tex) {
-		ns.state.currentTarget = target;
-		target.classList.add('hoverlatex-hover');
-		ns.output.showOverlay(target, tex);
+	function showOverlayForDetection(detection) {
+		ns.state.currentTarget = detection.element;
+		detection.element.classList.add('hoverlatex-hover');
+		ns.output.showOverlay(detection.element, detection.tex);
 	}
 
-	document.addEventListener('mouseover', (e) => {
-		if (ns.detect.isWikipedia()) {
-			const wikipediaTex = ns.detect.findWikipediaTex(e.target);
-			if (wikipediaTex) {
-				showOverlayForTarget(e.target, wikipediaTex);
-				return;
-			}
-		}
-
-		const googleAiTex = ns.detect.findGoogleAIMathTex(e.target);
-		if (googleAiTex) {
-			const googleAiTarget = e.target.closest?.('[data-xpm-copy-root][data-xpm-latex]') || e.target.closest?.('[data-xpm-latex]');
-			showOverlayForTarget(googleAiTarget || e.target, googleAiTex);
-			return;
-		}
-
-		const katex = ns.detect.findKaTeXElementFromEventTarget(e.target);
-		if (katex) {
-			const tex = ns.detect.findChatGPTTex(katex) || ns.detect.findAnnotationTex(katex);
-			if (tex) {
-				showOverlayForTarget(katex, tex);
-				return;
-			}
-		}
-
-		const dataMathEl = e.target.closest?.('[data-math]');
-		if (dataMathEl) {
-			const tex = dataMathEl.getAttribute('data-math');
-			if (tex && tex.trim()) {
-				showOverlayForTarget(dataMathEl, tex.trim());
-				return;
-			}
-		}
-
-		const mjxContainer = e.target.closest?.('mjx-container');
-		if (mjxContainer) {
-			const tex = ns.detect.findMathJaxV3Tex(mjxContainer);
-			if (tex) {
-				showOverlayForTarget(mjxContainer, tex);
-				return;
-			}
-		}
-
-		const mathJaxDisplay = e.target.closest?.('.MathJax_Display, .MJXc-display');
-		const mathJaxInline = e.target.closest?.('.MathJax, .mjx-chtml, .MathJax_CHTML, .MathJax_MathML');
-		if (mathJaxDisplay || mathJaxInline) {
-			const mathElement = mathJaxDisplay || mathJaxInline;
-			const tex = ns.detect.findMathJaxTex(mathElement);
-			if (tex) {
-				showOverlayForTarget(mathElement, tex);
-			}
-		}
+	// Hover and direct copy use the same candidate selection and extraction logic.
+	document.addEventListener('mouseover', (event) => {
+		const detection = ns.detect.detectFromTarget(event.target);
+		if (detection) showOverlayForDetection(detection);
 	});
 
-	document.addEventListener('mouseout', (e) => {
+	document.addEventListener('mouseout', (event) => {
 		const currentTarget = ns.state.currentTarget;
 		if (!currentTarget) return;
 
 		const stillInsideTarget =
-			(e.relatedTarget instanceof Node && currentTarget.contains(e.relatedTarget)) === true;
+			(event.relatedTarget instanceof Node && currentTarget.contains(event.relatedTarget)) === true;
 		if (stillInsideTarget) return;
 
-		const related = e.relatedTarget;
-		const movingIntoOverlay = related?.closest?.('.hoverlatex-overlay');
-		if (movingIntoOverlay) return;
-
-		const movingIntoKaTeX = ns.detect.findKaTeXElementFromEventTarget(related);
-		if (movingIntoKaTeX) return;
-
-		if (related?.closest?.('[data-xpm-latex]') || related?.closest?.('[data-xpm-copy-root]')) {
-			return;
-		}
-
-		if (
-			related?.closest?.('[data-math]') ||
-			related?.closest?.('[data-xpm-latex]') ||
-			related?.closest?.('[data-xpm-copy-root]') ||
-			related?.closest?.('mjx-container') ||
-			related?.closest?.('.MathJax_Display, .MJXc-display') ||
-			related?.closest?.('.MathJax, .mjx-chtml, .MathJax_CHTML, .MathJax_MathML')
-		) {
-			return;
-		}
-
-		if (
-			ns.detect.isWikipedia() &&
-			related?.tagName === 'IMG' &&
-			(related?.classList.contains('mwe-math') ||
-				related?.classList.contains('mwe-math-fallback-image-inline') ||
-				related?.classList.contains('mwe-math-fallback-image-display'))
-		) {
-			return;
-		}
+		const related = event.relatedTarget;
+		// Keep the overlay visible while moving onto it or directly between math roots.
+		if (related?.closest?.('.hoverlatex-overlay')) return;
+		if (ns.detect.findCandidateElementsFromTarget(related).length > 0) return;
 
 		currentTarget.classList.remove('hoverlatex-hover');
 		ns.output.hideOverlay();
 		ns.state.currentTarget = null;
 	});
 
-	function shouldHandleGesture(e) {
-		if (typeof e.button === 'number' && e.button !== 0) return false;
+	function shouldHandleGesture(event) {
+		if (typeof event.button === 'number' && event.button !== 0) return false;
 		return true;
 	}
 
-	function handleCopyGesture(e) {
-		if (!shouldHandleGesture(e)) return;
+	function handleCopyGesture(event) {
+		if (!shouldHandleGesture(event)) return;
 
 		const overlay = ns.state.overlay;
-		if (overlay && overlay.classList.contains('visible') && e.target?.closest?.('.hoverlatex-overlay')) {
+		if (overlay && overlay.classList.contains('visible') && event.target?.closest?.('.hoverlatex-overlay')) {
 			const tex = overlay.dataset.tex;
 			if (tex && tex.trim()) ns.output.copyLatex(tex.trim());
 			return;
 		}
 
-		if (ns.detect.isWikipedia()) {
-			const wikipediaTex = ns.detect.findWikipediaTex(e.target);
-			if (wikipediaTex) {
-				ns.output.copyLatex(wikipediaTex);
-				return;
-			}
+		const detection = ns.detect.detectFromTarget(event.target);
+		if (!detection) return;
+
+		// KaTeX can trigger both pointerdown and click for one gesture; suppress that duplicate.
+		if (detection.kind === 'katex') {
+			const now = Date.now();
+			if (ns.state.lastCopiedTex === detection.tex && now - ns.state.lastCopyGestureTs < 700) return;
+			ns.state.lastCopyGestureTs = now;
+			ns.state.lastCopiedTex = detection.tex;
 		}
 
-		const googleAiTex = ns.detect.findGoogleAIMathTex(e.target);
-		if (googleAiTex) {
-			ns.output.copyLatex(googleAiTex);
-			return;
-		}
-
-		const katex = ns.detect.findKaTeXElementFromEventTarget(e.target);
-		if (katex) {
-			const tex = ns.detect.findChatGPTTex(katex) || ns.detect.findAnnotationTex(katex);
-			if (tex) {
-				const now = Date.now();
-				if (ns.state.lastCopiedTex === tex && now - ns.state.lastCopyGestureTs < 700) return;
-				ns.state.lastCopyGestureTs = now;
-				ns.state.lastCopiedTex = tex;
-				ns.output.copyLatex(tex);
-				return;
-			}
-		}
-
-		const dataMathEl = e.target.closest?.('[data-math]');
-		if (dataMathEl) {
-			const tex = dataMathEl.getAttribute('data-math');
-			if (tex) {
-				ns.output.copyLatex(tex);
-				return;
-			}
-		}
-
-		const mjxContainer = e.target.closest?.('mjx-container');
-		if (mjxContainer) {
-			const tex = ns.detect.findMathJaxV3Tex(mjxContainer);
-			if (tex) {
-				ns.output.copyLatex(tex);
-				return;
-			}
-		}
-
-		const mathJaxDisplay = e.target.closest?.('.MathJax_Display, .MJXc-display');
-		const mathJaxInline = e.target.closest?.('.MathJax, .mjx-chtml, .MathJax_CHTML, .MathJax_MathML');
-		if (mathJaxDisplay || mathJaxInline) {
-			const mathElement = mathJaxDisplay || mathJaxInline;
-			const tex = ns.detect.findMathJaxTex(mathElement);
-			if (tex) ns.output.copyLatex(tex);
-		}
+		ns.output.copyLatex(detection.tex);
 	}
 
-	document.addEventListener('pointerdown', (e) => handleCopyGesture(e), { capture: true });
-	document.addEventListener('click', (e) => handleCopyGesture(e), { capture: true });
+	document.addEventListener('pointerdown', handleCopyGesture, { capture: true });
+	document.addEventListener('click', handleCopyGesture, { capture: true });
 })();
-

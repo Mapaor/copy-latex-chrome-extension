@@ -1,75 +1,113 @@
-// Convert HTML to Markdown and copy to clipboard (main function)
-// Kept as a classic script (not ESM) for Firefox MV3 compatibility.
-// Only exposes `convertAndCopyHtml` on globalThis.
+// Convert the live selection to Markdown and copy it to the clipboard.
+// Kept as a classic script for Firefox MV3 compatibility.
+// Only exposes `convertAndCopySelection` on globalThis.
 
 (() => {
-  async function convertAndCopyHtml(html) {
+  async function convertAndCopySelection(selection) {
     try {
-      const markdown = await convertHtmlToLatexMarkdown(html);
-
-      if (!markdown) {
-        return { ok: false, error: 'No content' };
-      }
-
-      const result = await copyToClipboard(markdown);
-      return result;
+      const markdown = await convertSelectionToLatexMarkdown(selection);
+      if (!markdown) return { ok: false, error: 'No content' };
+      return await copyToClipboard(markdown);
     } catch (error) {
-      console.error('[Copy LaTeX] Error in convertAndCopyHtml:', error);
+      console.error('[Copy LaTeX] Error in convertAndCopySelection:', error);
       return { ok: false, error: String(error) };
     }
   }
 
-  // Convert HTML to Markdown
-  async function convertHtmlToLatexMarkdown(html) {
+  // Turndown preserves this marker while the rendered math subtree is discarded.
+  function createLatexMarker(detection) {
+    const delimiter = detection.displayMode === 'display' ? '$$' : '$';
+    const marker = document.createElement('span');
+    marker.className = 'latex-marker';
+    marker.textContent = `${delimiter}${detection.tex}${delimiter}`;
+    marker.setAttribute('data-latex-mode', detection.displayMode);
+    return marker;
+  }
+
+  // Clone only selected content. Math roots are replaced as units, even if a range
+  // clips through one; ordinary text nodes are still clipped to the selected offsets.
+  function cloneSelectedNode(node, range, detectionsByElement) {
+    if (!range.intersectsNode(node)) return null;
+
+    const detection = detectionsByElement.get(node);
+    if (detection) return createLatexMarker(detection);
+
+    if (node.nodeType === Node.TEXT_NODE) {
+      const start = range.startContainer === node ? range.startOffset : 0;
+      const end = range.endContainer === node ? range.endOffset : node.length;
+      if (start >= end) return null;
+      return document.createTextNode(node.textContent.slice(start, end));
+    }
+
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const clone = node.cloneNode(false);
+      for (const child of node.childNodes) {
+        const selectedChild = cloneSelectedNode(child, range, detectionsByElement);
+        if (selectedChild) clone.appendChild(selectedChild);
+      }
+      return clone;
+    }
+
+    return node.cloneNode();
+  }
+
+  // Find roots in the live DOM before cloning so endpoint ancestors and renderer
+  // metadata remain available without serializing page HTML through the background.
+  function cloneRangeWithMathMarkers(range) {
+    const fragment = document.createDocumentFragment();
+    const detections = window.CopyLatex.detect.findMathElementsInRange(range);
+    const detectionsByElement = new Map(
+      detections.map((detection) => [detection.element, detection])
+    );
+
+    const enclosingMath = detections.find(
+      ({ element }) =>
+        element.contains(range.startContainer) && element.contains(range.endContainer)
+    );
+    if (enclosingMath) {
+      fragment.appendChild(createLatexMarker(enclosingMath));
+      return fragment;
+    }
+
+    const commonAncestor = range.commonAncestorContainer;
+    if (commonAncestor.nodeType === Node.TEXT_NODE) {
+      const selectedText = cloneSelectedNode(commonAncestor, range, detectionsByElement);
+      if (selectedText) fragment.appendChild(selectedText);
+      return fragment;
+    }
+
+    for (const child of commonAncestor.childNodes) {
+      const selectedChild = cloneSelectedNode(child, range, detectionsByElement);
+      if (selectedChild) fragment.appendChild(selectedChild);
+    }
+    return fragment;
+  }
+
+  function createSelectionFragment(selection) {
+    const fragment = document.createDocumentFragment();
+    for (let i = 0; i < selection.rangeCount; i++) {
+      fragment.appendChild(cloneRangeWithMathMarkers(selection.getRangeAt(i)));
+    }
+    return fragment;
+  }
+
+  // Convert a copy of the selected DOM, leaving the page itself untouched.
+  async function convertSelectionToLatexMarkdown(selection) {
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return '';
+
     const container = document.createElement('div');
-    // innerHTML usage here is safe: the 'html' parameter comes from trusted sources
-    // (user selection on the page), and we immediately process it in a controlled way
-    // without executing scripts or injecting external code.
-    container.innerHTML = html;
+    container.appendChild(createSelectionFragment(selection));
 
-    // 1) We detect all math elements
-    const mathElements = [
-      ...Array.from(container.querySelectorAll('.katex')),
-      ...Array.from(container.querySelectorAll('[data-math]')),
-      ...Array.from(container.querySelectorAll('mjx-container')),
-      ...Array.from(
-        container.querySelectorAll(
-          '.MathJax_Display, .MJXc-display, .MathJax, .mjx-chtml, .MathJax_CHTML, .MathJax_MathML'
-        )
-      ),
-      ...Array.from(
-        container.querySelectorAll(
-          'img.mwe-math, img.mwe-math-fallback-image-inline, img.mwe-math-fallback-image-display'
-        )
-      ),
-    ];
-
-    // 2) Replace math elements with LaTeX markers ($..$ or $$...$$)
-    mathElements.forEach((el) => {
-      const latex = extractLatexFromElement(el);
-      if (!latex) return;
-
-      const displayMode = getDisplayMode(el);
-      const delimiter = displayMode === 'display' ? '$$' : '$';
-
-      // Create a marker that Turndown will preserve, containing the LaTeX code
-      const marker = document.createElement('span');
-      marker.className = 'latex-marker';
-      marker.textContent = `${delimiter}${latex}${delimiter}`;
-      marker.setAttribute('data-latex-mode', displayMode);
-
-      el.replaceWith(marker);
-    });
-
-    // 2.1) Avoid selecting unicode fallbacks (we already have the LaTeX code)
-    // In other works, don't select any element that may contain math/latex content
+    // Remove duplicate MathJax scripts, MathML annotations, and rendered Unicode
+    // fallbacks once a recognized equation has a LaTeX marker.
     container.querySelectorAll('script[type*="math/tex"]').forEach((script) => script.remove());
     container.querySelectorAll('math, .katex-mathml').forEach((mathml) => mathml.remove());
-    container.querySelectorAll('annotation').forEach((ann) => ann.remove());
+    container.querySelectorAll('annotation').forEach((annotation) => annotation.remove());
     container.querySelectorAll('.katex-html, .katex-fallback, mjx-assistive-mml').forEach((el) => el.remove());
     container.querySelectorAll('semantics').forEach((el) => el.remove());
 
-    // 3) Convert relative URLs to absolute
+    // Preserve usable URLs when the selected content contained relative references.
+    // Convert relative URLs to absolute before serializing the selected fragment.
     container.querySelectorAll('a').forEach((link) => {
       link.setAttribute('href', link.href);
     });
@@ -77,156 +115,32 @@
       img.setAttribute('src', img.src);
     });
 
-    // 4) Convert to Markdown using Turndown
-
-    // TURNDOWN LIBRARY AND PLUGIN ORIGINAL SOURCE:
+    // TURNDOWN LIBRARY AND GFM PLUGIN ORIGINAL SOURCE:
     // Library: https://unpkg.com/turndown/dist/turndown.js
     // Plugin: https://unpkg.com/turndown-plugin-gfm/dist/turndown-plugin-gfm.js
-
     const turndownService = new TurndownService({
       headingStyle: 'atx',
       codeBlockStyle: 'fenced',
     })
       .remove('script')
       .remove('style');
-
-    // Use GFM plugin for tables support
+    // Use the GFM plugin for table support.
     turndownService.use(turndownPluginGfm.gfm);
-
-    // Custom rule to preserve LaTeX markers
+    // Keep generated LaTeX markers verbatim through HTML-to-Markdown conversion.
     turndownService.addRule('latexMarker', {
-      filter: (node) => {
-        return (
-          node.nodeName === 'SPAN' && node.classList && node.classList.contains('latex-marker')
-        );
-      },
-      replacement: (content, node) => {
-        // // Check if it's display mode ($$...$$) or inline ($...$)
-        // const isDisplay = node.getAttribute('data-latex-mode') === 'display';
-        // const latex = node.textContent || '';
-        
-        // // Block equations with blank lines before and after them
-        // return isDisplay ? `\n\n${latex}\n\n` : latex;
-
-        // New (simpler) approach: newlines handled in the markdown output via regex
-        return node.textContent || '';
-      },
+      filter: (node) =>
+        node.nodeName === 'SPAN' && node.classList?.contains('latex-marker'),
+      replacement: (content, node) => node.textContent || '',
     });
 
-    // innerHTML usage here is safe: we're reading back the DOM structure we created
-    // above through controlled manipulation. The container only contains elements we
-    // explicitly created or modified, with all scripts removed. This read-only use
-    // preserves the exact HTML structure needed for Turndown conversion while maintaining
-    // inline vs block equation distinctions (getComputedStyle requires rendered DOM).
-    const htmlString = container.innerHTML;
-    let markdown = turndownService.turndown(htmlString);
-
-    // To ensure exactly one blank line around block equations:
-    // First we add spacing around all block equations ($$ as delimiter)
+    // Turndown reads a serialization of the cloned, detached selection fragment.
+    let markdown = turndownService.turndown(container.innerHTML);
+    // Add spacing around display equations, normalize whitespace-only lines,
+    // collapse excess blank lines, then trim the final Markdown.
     markdown = markdown.replace(/(\$\$[\s\S]+?\$\$)/g, '\n\n$1\n\n');
-    // Normalize (convert lines with only whitespaces to empty lines)
     markdown = markdown.replace(/^[ \t]+$/gm, '');
-    // Then collapse 3 or more newlines to 2 newlines
     markdown = markdown.replace(/\n{3,}/g, '\n\n');
-    // Then we trim other leading or trailing whitespaces
-    markdown = markdown.trim();
-
-    return markdown;
-  }
-
-  // Extract LaTeX replicating the logic from detection.js
-  // TODO One day: Unify this detection logic using the same as detection.js
-  function extractLatexFromElement(el) {
-    // Wikipedia
-    if (el.tagName === 'IMG' && el.classList.contains('mwe-math')) {
-      const alt = el.getAttribute('alt');
-      if (alt) {
-        const match = alt.match(/^\{\\displaystyle\s*([\s\S]*?)\}$/);
-        return match && match[1] ? match[1].trim() : alt.trim();
-      }
-    }
-
-    // KaTeX
-    if (el.classList.contains('katex')) {
-      const mathSource = el.closest('[data-math-source]')?.getAttribute('data-math-source');
-      if (mathSource && mathSource.trim()) return mathSource.trim();
-
-      const ann = el.querySelector('.katex-mathml annotation[encoding="application/x-tex"]');
-      if (ann && ann.textContent) return ann.textContent.trim();
-
-      return (
-        el.getAttribute('data-tex') ||
-        el.getAttribute('data-latex') ||
-        el.getAttribute('aria-label') ||
-        null
-      );
-    }
-
-    // Gemini (data-math attribute)
-    if (el.hasAttribute('data-math')) {
-      const dataMath = el.getAttribute('data-math');
-      if (dataMath && dataMath.trim()) return dataMath.trim();
-    }
-
-    // MathJax v3/v4
-    if (el.tagName === 'MJX-CONTAINER') {
-      // Try global variable set by page script
-      const globalLatex = window.__lastMathJaxV3Latex;
-      if (globalLatex) return globalLatex;
-
-      // Fallback to script element
-      const sibling = el.nextElementSibling;
-      if (sibling && sibling.tagName === 'SCRIPT') {
-        const scriptEl = sibling;
-        if (scriptEl.type && scriptEl.type.includes('math/tex')) {
-          return sibling.textContent?.trim() || null;
-        }
-      }
-    }
-
-    // MathJax v2
-    const sibling = el.nextElementSibling;
-    if (sibling && sibling.tagName === 'SCRIPT') {
-      const scriptEl = sibling;
-      const type = scriptEl.type;
-      if (type === 'math/tex' || type === 'math/tex; mode=display') {
-        return sibling.textContent?.trim() || null;
-      }
-    }
-
-    return null;
-  }
-
-  // Determine if math should be inline or display mode
-  function getDisplayMode(el) {
-    // Wikipedia
-    if (el.classList.contains('mwe-math-fallback-image-display')) return 'display';
-
-    // MathJax v2
-    if (el.classList.contains('MathJax_Display') || el.classList.contains('MJXc-display')) {
-      return 'display';
-    }
-
-    // MathJax v3/v4
-    if (el.tagName === 'MJX-CONTAINER' && el.hasAttribute('display')) {
-      return 'display';
-    }
-
-    // KaTeX: check for display class on parent
-    if (el.classList.contains('katex')) {
-      if (el.parentElement?.classList.contains('katex-display')) return 'display';
-      if (el.parentElement) {
-        const style = window.getComputedStyle(el.parentElement);
-        if (style.display === 'block') return 'display';
-      }
-    }
-
-    // Gemini: check if div (block equation) or span (inline equation)
-    if (el.hasAttribute('data-math')) {
-      return el.tagName === 'DIV' ? 'display' : 'inline';
-    }
-
-    return 'inline';
+    return markdown.trim();
   }
 
   // Copy text to clipboard with fallback methods
@@ -243,7 +157,7 @@
         });
       } catch (e) {
         if (e instanceof TypeError) {
-          // Firefox: clipboard-write is not queryable, just try to write          await navigator.clipboard.writeText(t);
+          // Firefox doesn't support querying clipboard-write; try the write directly.
           await navigator.clipboard.writeText(t);
           return true;
         }
@@ -301,5 +215,5 @@
   }
 
   // Expose only the single entrypoint
-  globalThis.convertAndCopyHtml = convertAndCopyHtml;
+  globalThis.convertAndCopySelection = convertAndCopySelection;
 })();

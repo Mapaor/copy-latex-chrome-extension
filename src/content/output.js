@@ -57,18 +57,17 @@
 
 
 
-  // Selection to Markdown (with LaTeX) or to Typst
-  // Listen for messages from background script
+  // Selection to Markdown (with LaTeX) or to Typst.
+  // Keep selection ranges in the content script so detection can use live DOM nodes.
   browser.runtime.onMessage.addListener((message) => {
-		if (message?.type !== 'convertHtmlToMarkdown') return;
+		if (message?.type !== 'convertSelectionToMarkdown') return;
 
 		return (async () => {
-			if (typeof convertAndCopyHtml !== 'function') {
-				return { ok: false, error: 'convertAndCopyHtml is not available' };
+			if (typeof convertAndCopySelection !== 'function') {
+				return { ok: false, error: 'convertAndCopySelection is not available' };
 			}
 
-      // console.log('[Copy LaTeX] Converting HTML to Markdown, length:', message.html?.length);
-			const result = await convertAndCopyHtml(message.html);
+			const result = await convertAndCopySelection(window.getSelection());
 			if (!result.ok) return result;
 
       // Check user's format preference

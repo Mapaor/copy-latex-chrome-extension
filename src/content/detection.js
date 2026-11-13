@@ -8,6 +8,26 @@
 		lastCopiedTex: null,
 	};
 
+	const HTML_NAMESPACE = 'http://www.w3.org/1999/xhtml';
+	// These selectors find likely renderer roots. Namespace-sensitive element names
+	// are validated separately by the renderer-specific detectors below.
+	const CANDIDATE_SELECTOR = [
+		'.katex',
+		'[data-math]',
+		'[data-xpm-copy-root][data-xpm-latex]',
+		'[data-xpm-latex]',
+		'mjx-container',
+		'.MathJax_Display',
+		'.MJXc-display',
+		'.MathJax',
+		'.mjx-chtml',
+		'.MathJax_CHTML',
+		'.MathJax_MathML',
+		'img.mwe-math',
+		'img.mwe-math-fallback-image-inline',
+		'img.mwe-math-fallback-image-display',
+	].join(', ');
+
 	function isWikipedia() {
 		const hostname = window.location.hostname;
 		return (
@@ -24,167 +44,299 @@
 		return hostname === 'www.google.com' || hostname.endsWith('.google.com') || hostname.startsWith('www.google.');
 	}
 
-	function findWikipediaTex(el) {
-    // Only work on Wikipedia/Wikiwand sites
-		if (!isWikipedia()) return null;
-		if (!el || el.tagName !== 'IMG') return null;
+	// tagName casing varies across namespaces; check both the HTML namespace and localName.
+	function isHtmlElementNamed(el, localName) {
+		return el?.namespaceURI === HTML_NAMESPACE && el.localName === localName;
+	}
 
-    // Check if it's a Wikipedia math image
+	function hasAnyClass(el, classNames) {
+		return classNames.some((className) => el.classList.contains(className));
+	}
+
+	function findWikipediaTex(el) {
+		// Restrict the alt-text convention to Wikipedia-family sites and HTML images.
+		if (!isWikipedia() || !isHtmlElementNamed(el, 'img')) return null;
 		if (
-			el.classList.contains('mwe-math') ||
-			el.classList.contains('mwe-math-fallback-image-inline') ||
-			el.classList.contains('mwe-math-fallback-image-display')
+			!hasAnyClass(el, [
+				'mwe-math',
+				'mwe-math-fallback-image-inline',
+				'mwe-math-fallback-image-display',
+			])
 		) {
-			const alt = el.getAttribute('alt');
-			if (alt && alt.trim()) {
-        // Remove leading '{\displaystyle' and trailing '}'
-				const match = alt.trim().match(/^\{\\displaystyle\s*([\s\S]*?)\}$/);
-				if (match) return match[1].trim();
-				return alt.trim();
-			}
+			return null;
 		}
 
-		return null;
+		const alt = el.getAttribute('alt');
+		if (!alt?.trim()) return null;
+		// Unwrap the display-style wrapper when present; otherwise preserve the alt text.
+		const match = alt.trim().match(/^\{\\displaystyle\s*([\s\S]*?)\}$/);
+		return match ? match[1].trim() : alt.trim();
 	}
 
 	function findMathJaxV3Tex(el) {
-    // Check for MathJax v3 containers
-		const mjxContainer = el?.closest?.('mjx-container');
+		// MathJax v3/v4 renders into an HTML custom element, not a MathML <math> node.
+		const mjxContainer = isHtmlElementNamed(el, 'mjx-container') ? el : null;
 		if (!mjxContainer) return null;
 
-    // Use the last received LaTeX from the page script
-		if (ns.state.lastMathJaxV3Latex) {
-			return ns.state.lastMathJaxV3Latex;
-		}
+		// MathJax v3/v4 exposes the source through the page-world bridge when available.
+		// The bridge currently stores the most recently observed source in shared state.
+		if (ns.state.lastMathJaxV3Latex) return ns.state.lastMathJaxV3Latex;
 
-    // Fallback: try to find any associated script elements nearby
+		// Fall back to nearby TeX script nodes used by some MathJax integrations.
 		let current = mjxContainer;
-		for (let i = 0; i < 5; i++) {  // Check a few siblings
-			if (!current.nextElementSibling) break;
+		for (let i = 0; i < 5; i++) {
 			current = current.nextElementSibling;
+			if (!current) break;
 			if (
-				current.tagName === 'SCRIPT' &&
+				isHtmlElementNamed(current, 'script') &&
 				(current.type === 'math/tex' || current.type === 'math/tex; mode=display')
 			) {
-				return current.textContent.trim();
+				return current.textContent.trim() || null;
 			}
 		}
 
 		return null;
 	}
 
+	// ChatGPT exposes the original KaTeX source on an ancestor data attribute.
 	function findChatGPTTex(el) {
-		// New ChatGPT Katex rendering
-		const katexEl = el?.closest?.('.katex');
-		if (!katexEl) return null;
-
-		const mathSource = katexEl
-			.closest('[data-math-source]')
-			?.getAttribute('data-math-source');
-
-		if (mathSource?.trim()) {
-			return mathSource.trim();
-		}
-
-		return null;
+		if (!el?.classList?.contains('katex')) return null;
+		const mathSource = el.closest('[data-math-source]')?.getAttribute('data-math-source');
+		return mathSource?.trim() || null;
 	}
 
+	// Other KaTeX renderers commonly keep TeX in MathML annotation or accessibility attributes.
 	function findAnnotationTex(el) {
-		// Typical Katex rendering
-		const katexEl = el?.closest?.('.katex');
-		if (!katexEl) return null;
+		if (!el?.classList?.contains('katex')) return null;
 
-		const ann = katexEl.querySelector(
-			'annotation[encoding="application/x-tex"], annotation[encoding="application/x-latex"], annotation[encoding="application/tex"]'
+		const annotation = el.querySelector(
+			'annotation[encoding="application/x-tex"], ' +
+			'annotation[encoding="application/x-latex"], ' +
+			'annotation[encoding="application/tex"]'
 		);
-		if (ann && ann.textContent.trim()) return ann.textContent.trim();
+		if (annotation?.textContent.trim()) return annotation.textContent.trim();
 
 		const dataLatex =
-			katexEl.getAttribute('data-tex') ||
-			katexEl.getAttribute('data-latex') ||
-			katexEl.getAttribute('aria-label');
-		if (dataLatex && dataLatex.trim()) return dataLatex.trim();
-
-		return null;
-	}
-
-	function findKaTeXElementFromEventTarget(target) {
-		if (!(target instanceof Element)) return null;
-
-		// Only treat the hover/click as "KaTeX" when the pointer is actually inside
-		// a KaTeX-rendered subtree. Avoid scanning for any descendant `.katex`, because
-		// that makes the hit area too broad (e.g. entire lines containing inline math).
-		return target.closest?.('.katex') || null;
+			el.getAttribute('data-tex') ||
+			el.getAttribute('data-latex') ||
+			el.getAttribute('aria-label');
+		return dataLatex?.trim() || null;
 	}
 
 	function findMathJaxTex(el) {
-    // Check for MathJax display equations
-		const mathJaxDisplay = el.closest?.('.MathJax_Display, .MJXc-display');
+		// MathJax v2 display output keeps its TeX in a following script sibling.
+		const mathJaxDisplay = el?.matches?.('.MathJax_Display, .MJXc-display')
+			? el
+			: null;
 		if (mathJaxDisplay) {
-      // Look for the script element after the display div
 			let sibling = mathJaxDisplay.nextElementSibling;
 			while (sibling) {
-				if (sibling.tagName === 'SCRIPT' && sibling.type === 'math/tex; mode=display') {
-					return sibling.textContent.trim();
+				if (isHtmlElementNamed(sibling, 'script') && sibling.type === 'math/tex; mode=display') {
+					return sibling.textContent.trim() || null;
 				}
 				sibling = sibling.nextElementSibling;
 			}
 		}
 
-    // Check for MathJax inline equations (various formats)
-		const mathJaxInline = el.closest?.('.MathJax, .mjx-chtml, .MathJax_CHTML, .MathJax_MathML');
-		if (mathJaxInline) {
-      // For traditional MathJax elements with IDs
-			if (mathJaxInline.id && mathJaxInline.id.includes('MathJax-Element-')) {
-        // Look for the script element after the MathJax span
-        let sibling = mathJaxInline.nextElementSibling;
-				while (sibling) {
-					if (sibling.tagName === 'SCRIPT' && sibling.type === 'math/tex') {
-						return sibling.textContent.trim();
-					}
-					sibling = sibling.nextElementSibling;
-				}
-			}
-      
-      // For newer MathJax formats (mjx-chtml, MathJax_CHTML)
-      // Look for script elements with math/tex type
+		// Inline and newer MathJax v2 output use the same neighboring-script fallback.
+		const mathJaxInline = el?.matches?.('.MathJax, .mjx-chtml, .MathJax_CHTML, .MathJax_MathML')
+			? el
+			: null;
+		if (!mathJaxInline) return null;
+
+		if (mathJaxInline.id?.includes('MathJax-Element-')) {
 			let sibling = mathJaxInline.nextElementSibling;
 			while (sibling) {
-				if (
-					sibling.tagName === 'SCRIPT' &&
-					(sibling.type === 'math/tex' || sibling.type === 'math/tex; mode=display')
-				) {
-					return sibling.textContent.trim();
+				if (isHtmlElementNamed(sibling, 'script') && sibling.type === 'math/tex') {
+					return sibling.textContent.trim() || null;
 				}
 				sibling = sibling.nextElementSibling;
 			}
 		}
 
+		let sibling = mathJaxInline.nextElementSibling;
+		while (sibling) {
+			if (
+				isHtmlElementNamed(sibling, 'script') &&
+				(sibling.type === 'math/tex' || sibling.type === 'math/tex; mode=display')
+			) {
+				return sibling.textContent.trim() || null;
+			}
+			sibling = sibling.nextElementSibling;
+		}
 		return null;
 	}
 
+	// Google Search's math renderer exposes its source in data-xpm-latex.
 	function findGoogleAIMathTex(el) {
-		if (!isGoogleSearch()) return null;
+		if (!isGoogleSearch() || !el?.hasAttribute?.('data-xpm-latex')) return null;
+		const latex = el.getAttribute('data-xpm-latex');
+		return latex?.trim() || null;
+	}
+
+	function candidateMatches(el) {
+		return el instanceof Element && el.matches(CANDIDATE_SELECTOR);
+	}
+
+	// Pointer targeting is intentionally limited to ancestors of the actual hit target;
+	// scanning descendants would make the hit area too broad (for example, whole text lines).
+	function getCandidateElementsFromTarget(target) {
+		if (!(target instanceof Element)) return [];
+		const candidates = [];
+		const add = (el) => {
+			if (el && !candidates.includes(el)) candidates.push(el);
+		};
+
+		if (isWikipedia()) add(target.closest('img.mwe-math, img.mwe-math-fallback-image-inline, img.mwe-math-fallback-image-display'));
+		if (isGoogleSearch()) {
+			add(target.closest('[data-xpm-copy-root][data-xpm-latex]'));
+			add(target.closest('[data-xpm-latex]'));
+		}
+		add(target.closest('.katex'));
+		add(target.closest('[data-math]'));
+		add(target.closest('mjx-container'));
+		add(target.closest('.MathJax_Display, .MJXc-display'));
+		add(target.closest('.MathJax, .mjx-chtml, .MathJax_CHTML, .MathJax_MathML'));
+		return candidates;
+	}
+
+	// Use renderer markup/attributes; a block-level parent alone doesn't imply display math.
+	function getDisplayMode(el, kind) {
+		if (
+			kind === 'wikipedia' &&
+			el.classList.contains('mwe-math-fallback-image-display')
+		) {
+			return 'display';
+		}
+		if (kind === 'mathjax-v2' && el.matches('.MathJax_Display, .MJXc-display')) {
+			return 'display';
+		}
+		if (kind === 'mathjax-v3' && el.hasAttribute('display')) return 'display';
+
+		if (kind === 'katex' && el.closest('.katex-display')) return 'display';
+		if (kind === 'data-math') {
+			// This renderer uses DIV for block equations and inline elements otherwise.
+			return isHtmlElementNamed(el, 'div') ? 'display' : 'inline';
+		}
+		return 'inline';
+	}
+
+	// Shared detection/extraction entry point. Callers decide how candidate roots are found.
+	function detectMathElement(el) {
 		if (!(el instanceof Element)) return null;
+		let tex = null;
+		let kind = null;
 
-		const latexEl =
-			el.closest?.('[data-xpm-copy-root][data-xpm-latex]') ||
-			el.closest?.('[data-xpm-latex]');
-		if (!latexEl) return null;
+		tex = findWikipediaTex(el);
+		if (tex) kind = 'wikipedia';
 
-		const latex = latexEl.getAttribute('data-xpm-latex');
-		return latex && latex.trim() ? latex.trim() : null;
+		if (!tex && isGoogleSearch() && el.hasAttribute('data-xpm-latex')) {
+			tex = findGoogleAIMathTex(el);
+			if (tex) kind = 'google-ai';
+		}
+
+		if (!tex && el.classList.contains('katex')) {
+			tex = findChatGPTTex(el) || findAnnotationTex(el);
+			if (tex) kind = 'katex';
+		}
+
+		if (!tex && el.hasAttribute('data-math')) {
+			tex = el.getAttribute('data-math')?.trim() || null;
+			if (tex) kind = 'data-math';
+		}
+
+		if (!tex && isHtmlElementNamed(el, 'mjx-container')) {
+			tex = findMathJaxV3Tex(el);
+			if (tex) kind = 'mathjax-v3';
+		}
+
+		if (!tex && el.matches('.MathJax_Display, .MJXc-display, .MathJax, .mjx-chtml, .MathJax_CHTML, .MathJax_MathML')) {
+			tex = findMathJaxTex(el);
+			if (tex) kind = 'mathjax-v2';
+		}
+
+		if (!tex) return null;
+		return { element: el, tex, displayMode: getDisplayMode(el, kind), kind };
+	}
+
+	function detectFromTarget(target) {
+		for (const candidate of getCandidateElementsFromTarget(target)) {
+			const result = detectMathElement(candidate);
+			if (result) return result;
+		}
+		return null;
+	}
+
+	function findCandidateElements(root) {
+		if (!(root instanceof Element || root instanceof DocumentFragment)) return [];
+		const candidates = [];
+		if (root instanceof Element && candidateMatches(root)) candidates.push(root);
+		candidates.push(...root.querySelectorAll(CANDIDATE_SELECTOR));
+		return candidates;
+	}
+
+	// Return detected roots only once, suppressing nested candidates when an ancestor
+	// already represents the same rendered equation.
+	function findMathElements(root) {
+		const detections = [];
+		for (const candidate of findCandidateElements(root)) {
+			const detection = detectMathElement(candidate);
+			if (!detection) continue;
+			if (detections.some(({ element }) => element.contains(candidate))) continue;
+			for (let i = detections.length - 1; i >= 0; i--) {
+				if (candidate.contains(detections[i].element)) detections.splice(i, 1);
+			}
+			detections.push(detection);
+		}
+		return detections;
+	}
+
+	function findMathElementsInRange(range) {
+		// Search the common-ancestor subtree and its ancestors so roots containing
+		// either selection endpoint are included, even when the cloned range omits them.
+		const commonAncestor = range.commonAncestorContainer;
+		const searchRoot = commonAncestor instanceof Element ? commonAncestor : commonAncestor.parentElement;
+		const candidates = new Set(findCandidateElements(searchRoot));
+
+		let ancestor = searchRoot;
+		while (ancestor) {
+			if (candidateMatches(ancestor)) candidates.add(ancestor);
+			ancestor = ancestor.parentElement;
+		}
+
+		const detections = [];
+		for (const candidate of candidates) {
+			if (!range.intersectsNode(candidate)) continue;
+			const detection = detectMathElement(candidate);
+			if (!detection) continue;
+			// Keep only the outermost detected root when renderer selectors overlap.
+			if (detections.some(({ element }) => element.contains(candidate))) continue;
+			for (let i = detections.length - 1; i >= 0; i--) {
+				if (candidate.contains(detections[i].element)) detections.splice(i, 1);
+			}
+			detections.push(detection);
+		}
+
+		detections.sort((a, b) => {
+			if (a.element === b.element) return 0;
+			return a.element.compareDocumentPosition(b.element) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+		});
+		return detections;
 	}
 
 	ns.detect = {
 		isWikipedia,
+		isGoogleSearch,
 		findWikipediaTex,
 		findMathJaxV3Tex,
 		findAnnotationTex,
-		findKaTeXElementFromEventTarget,
 		findMathJaxTex,
 		findGoogleAIMathTex,
 		findChatGPTTex,
+		findCandidateElementsFromTarget: getCandidateElementsFromTarget,
+		detectFromTarget,
+		detectMathElement,
+		findMathElements,
+		findMathElementsInRange,
 	};
 })();
-
