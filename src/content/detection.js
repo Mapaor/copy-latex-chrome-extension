@@ -54,8 +54,22 @@
 	}
 
 	function findWikipediaTex(el) {
-		// Restrict the alt-text convention to Wikipedia-family sites and HTML images.
-		if (!isWikipedia() || !isHtmlElementNamed(el, 'img')) return null;
+		if (!isWikipedia()) return null;
+
+		// New Wikipedia math output includes the original source in MediaWiki's data-mw.
+		if (isHtmlElementNamed(el, 'mjx-container')) {
+			const mathElement = el.querySelector('.mwe-math-element[data-mw]');
+			try {
+				const source = JSON.parse(mathElement?.getAttribute('data-mw') || '').body?.extsrc;
+				if (typeof source === 'string' && source.trim()) return source.trim();
+			} catch {
+				// Ignore absent or malformed metadata and let other MathJax detection run.
+			}
+			return null;
+		}
+
+		// Older Wikipedia pages expose the TeX source as an image's alt text.
+		if (!isHtmlElementNamed(el, 'img')) return null;
 		if (
 			!hasAnyClass(el, [
 				'mwe-math',
@@ -204,7 +218,8 @@
 	function getDisplayMode(el, kind) {
 		if (
 			kind === 'wikipedia' &&
-			el.classList.contains('mwe-math-fallback-image-display')
+			(el.classList.contains('mwe-math-fallback-image-display') ||
+				(isHtmlElementNamed(el, 'mjx-container') && el.getAttribute('display') === 'true'))
 		) {
 			return 'display';
 		}
