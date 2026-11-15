@@ -1,5 +1,9 @@
-// MathJax v3/v4 keeps the original LaTeX in its API, not in the rendered HTML
-// This script can access that API and sends the LaTeX to main.js with an ID for each mjx-container
+// Problem: In MathJax v3/v4, the LaTeX source code is not present in the rendered HTML
+// Solution: We can use the MathJax API, which exposes the LaTeX source code
+// New problem: A content script runs in an isolated JS world and cannot access the page's MathJax object
+// Solution to that: This script is injected into the page as a normal page script, so it can access MathJax
+// The bridge reads the LaTeX from MathJax and sends it to main.js with an ID for each mjx-container
+// This way main.js can match each rendered equation with its LaTeX source
 (function () {
 	const OUTPUT_ID_ATTRIBUTE = 'data-copy-latex-mathjax-id';
 	const MESSAGE_TYPE = 'CopyLaTeX_MathJaxIndex';
@@ -21,6 +25,8 @@
 		return Boolean(version && (version.startsWith('3') || version.startsWith('4')));
 	}
 
+	// MathJax stores the LaTeX in its internal list of math items, which we can access through the MathJax API
+	// We can get the items with getMathItemsWithin(), or by walking the internal list
 	function getMathItems(candidate) {
 		const mathDocument = candidate?.startup?.document;
 		if (!mathDocument) return [];
@@ -33,7 +39,7 @@
 			}
 		}
 
-		// If getMathItemsWithin is not available, read the math items from MathJax's linked list instead
+		// If getMathItemsWithin() is not available (or throws an error), read the items from MathJax's linked list instead
 		const list = mathDocument.math?.list;
 		if (!list) return [];
 
@@ -48,19 +54,20 @@
 		return items;
 	}
 
+	// Each MathItem has a typesetRoot that points to the rendered output
+	// Usually this is the mjx-container itself, but some integrations wrap it
 	function getOutputRoot(mathItem) {
 		const root = mathItem?.typesetRoot;
 		if (root?.nodeType !== Node.ELEMENT_NODE) return null;
 		if (root.matches('mjx-container')) return root;
 
-		// Usually typesetRoot is the mjx-container itself
-		// Some integrations wrap it, so only use the nested container if there is exactly one
+		// If the wrapper contains more than one mjx-container, we cannot tell which one belongs to this MathItem
 		const nestedRoots = root.querySelectorAll('mjx-container');
 		return nestedRoots.length === 1 ? nestedRoots[0] : null;
 	}
 
 	function getOrAssignId(root, usedIds) {
-		// Add an ID to each container so main.js can match it with the LaTeX we send
+		// Give each container an ID so main.js can match it with the LaTeX we send
 		let id = root.getAttribute(OUTPUT_ID_ATTRIBUTE);
 		if (!id?.startsWith(idPrefix) || usedIds.has(id)) {
 			id = `${idPrefix}${++nextId}`;
@@ -89,7 +96,8 @@
 		}
 	}
 
-	// MathJax can add or remove equations after the page loads, so rebuild the index when its output changes
+	// New problem: MathJax can add or remove equations after the page loads, so the first index can become out of date
+	// Solution: Rebuild the index when MathJax output changes, and only send the entries that changed
 	function rebuildIndex() {
 		if (!mathjax) return;
 
@@ -159,7 +167,7 @@
 		mathjax = candidate;
 		rebuildIndex();
 
-		// Watch for MathJax containers being added or removed and update the index
+		// Keep watching the page because MathJax can typeset more equations later
 		const outputObserver = new MutationObserver((mutations) => {
 			if (mutations.some(mutationTouchesMathJaxOutput)) scheduleIndexRebuild();
 		});
@@ -172,7 +180,7 @@
 		if (!isSupportedMathJax(candidate)) return false;
 		if (candidate === mathjax || candidate === pendingMathJax) return true;
 
-		// Wait for MathJax to finish starting before reading its math items
+		// MathJax may not have finished creating its document yet, so wait for startup before reading its math items
 		const startupPromise = candidate.startup?.promise;
 		if (startupPromise && typeof startupPromise.then === 'function') {
 			pendingMathJax = candidate;
@@ -211,7 +219,8 @@
 		const candidate = window.MathJax;
 		if (!candidate || (candidate.version && !isSupportedMathJax(candidate)) || !document.documentElement) return;
 
-		// If MathJax is loading but not ready yet, watch the page and try again
+		// New problem: Some pages load MathJax after this script runs
+		// Solution: Watch for page changes and try again when MathJax becomes available
 		startupObserver = new MutationObserver(retryInitialization);
 		startupObserver.observe(document.documentElement, { childList: true, subtree: true });
 		const stopWaiting = () => {
