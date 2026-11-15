@@ -57,6 +57,30 @@ And now the custom site should appear as a new toggle in the "Permissions and da
 
 ## Technical details
 
+### Internal architecture
+
+- `manifest.json` is the entry point of the extension, read about it [here](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json).
+- Inside `content/` we have our main content script (`main.js`) and other content scripts (output.js, detection.js, overlay.js, selection-to-markdown.js and utilities). As these scripts are classic scripts (not ES modules) each one is declared as an [IIFE](https://developer.mozilla.org/en-US/docs/Glossary/IIFE) function (`(() => {})();`) so that all variables and functions of the script are scoped, this way we can use the same names in each script (like `const ns` or `detectMathElement()`). They communicate with each other
+through the [`window`](https://developer.mozilla.org/en-US/docs/Web/API/Window) API (using the `window.CopyLatex` object), each one exposing a little API to the others.
+
+  - `overlay.js` simply contains the logic and position of the overlay when hovering over an equation.
+  - `detection.js` contains the detection of DOM elements that contain the rellevant LaTeX source. There all cases are listed (KaTeX, MathJax, Wikipedia, ChatGPT, StackExchange, etc.), so this is the script that contains the actual detection and it's therefore the one that is updated more regularly.
+  - `output.js` reads (the LaTeX or selection), converts (to Typst math, Markdown, or Typst), and copies it to clipboard.
+  
+      Note: The browser APIs and clipboard operations are `async` because they are beyond permissions of content scripts (which are tab specific), these are browser-wide (the copied latex in one tab need to be pasteable to other tabs).
+  - `main.js` receives hover and click events, uses `detection.js` API to see if it's math or not and then calls the `overlay.js` and `output.js` APIs.
+
+      For MathJax v3/v4, the main script also injects `mathjax-bridge.js` into the
+      page to be able to use the MathJax API. It then sends the LaTeX back using `window.postMessage`.
+- `popup.js` has the logic and settings of the popup UI. It reads and writes the prefered settings to the local storage (`browser.storage.local`).
+- `background.js` runs within the extension context (whole browser, not a page script, not a content script), it reads local storage to see if preferences have changed and act on it (for example hide the context menu option), read more about it [here](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Background_scripts).
+
+    For selection conversion it sends a message to `output.js` of the tab, and then it's the content script which inspects the (live) selection, converts it and copies it to the clipboard.
+
+- Javascript libraries (inside `lib/`) load
+later as globals, these are [turndown](https://github.com/mixmark-io/turndown), [tex2typst](https://github.com/qwinsi/tex2typst) and [markdown2typst](https://github.com/Mapaor/markdown2typst).
+
+
 ### How to test the extension locally
 
 To check that the extension works you can either:
@@ -85,23 +109,32 @@ This extension also works thanks to the following open source projects:
 
 ## License
 
-MIT License.
+[MIT License](/LICENSE)
 
 It is MIT Licensed so that anyone can customize it to their needs but please don't just copy-cat the code and publish it with a new name, it's weird. 
 
 If you have an idea for a new feature open an issue and let me know! Also if you have the time to implement a feature you want it would be great if you made a pull request.
 
-## To-do minor improvements
+## Roadmap
+### To-do minor improvements
 Some minor things to fix or improve (for when I have the time):
 - [ ] In the copy selection (both to Markdown and to Typst) feature fix the Wikipedia case (don't detect images that contain the `mwe-math` related classes as images).
-- [ ] Improve the documentation of the extension (the screenshots and GIFs are of previous versions).
+- [ ] Add support for new ChatGPT custom table rendering
+- [ ] Fix overlay overflow in very large pages
+- [ ] Improve the documentation of the extension (the screenshots and GIFs are of previous versions). Maybe even create a website for the extension using another repo and GH pages.
 
-## Planned features:
+### Internal refactorings
+- [X] Unify detection for single equations and for equations in range of a selection into a single one
+- [ ] Rewrite detection.js so that there is a single registry containing all detection specific rules for each kind of math rendering (to make it easier to add new kinds of math rendering of specific websites)
+
+### Planned features:
 - [X] **Text selection to Markdown**: Select some text that includes equations, right click and a new option "[Extension Icon] Copy as Markdown" appears.
 - [X] **Typst support**: 
   Pop up with a toggle between LaTeX and Typst
 - [X] **Theme selection**: Config option to choose the theme (light, dark or system)
 - [X] **Hide option in context menu**:  Allow users to hide the copy selection feature when right-clicking (for those who don't need it and want a less clustered context menu).
+- [ ] **Hide overlay option**: Option to remove the overlay on hover, and instead copy the equationis via context menu
+- [ ] **Hijack Ctrl+C for selection to Markdown option**: Option to enable Ctrl+C to work as selection to Markdown without the need to open the context menu.
 - [ ] **Custom  delimiters**: 
 Config option to chose between no delimiters (default), `$` and `$$`, `\(` and `\[`, always `$`, or always `$$`.
 - [ ] **Custom translations**. Allow to replace the 'Click to copy', 'Copied!', 'Copy as Markdown' and 'Copy as Typst' messages to be replaced by custom ones.
