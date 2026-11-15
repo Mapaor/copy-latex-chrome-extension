@@ -344,7 +344,9 @@
           el.hasAttribute("data-xpm-latex")),
       extractTex: extractGoogleSearchTex,
       getDisplayMode: getGoogleSearchDisplayMode,
-      testingExamples: [],
+      testingExamples: [
+        "https://www.google.com/search?client=firefox-b-d&q=explain+to+me+the+euler+identity+and+where+it+comes+from",
+      ],
     },
     ...KATEX_ENTRIES,
     {
