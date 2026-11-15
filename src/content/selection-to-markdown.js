@@ -1,4 +1,4 @@
-// Converts the live selection to Markdown and copies it to the clipboard
+// Converts the live selection to Markdown
 
 (() => {
 
@@ -152,7 +152,9 @@
     return markdown.trim();
   }
 
-  // Expose only the conversion entry point; output.js owns clipboard operations.
+  // This is the only function exposed to the other content scripts
+  // output.js calls it for both the context-menu and keyboard-copy actions
+  // It returns Markdown so output.js can convert and copy the final text
   const ns = (window.CopyLatex = window.CopyLatex || {});
   ns.selection = ns.selection || {};
   ns.selection.toMarkdown = convertSelectionToLatexMarkdown;

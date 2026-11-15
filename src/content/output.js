@@ -64,6 +64,8 @@
 
 
 
+	// Keep the output format ready because the copy event cannot wait for storage
+	// If the setting has not loaded yet, let the browser copy the selection as usual
 	let cachedOutputFormat = 'latex';
 	let outputFormatLoaded = false;
 	let outputFormatPreferenceRevision = 0;
@@ -80,6 +82,7 @@
 			setOutputFormatPreference(changes.outputFormat.newValue);
 		});
 
+		// Keep a new setting change if it arrives before this first read finishes
 		const initialRevision = outputFormatPreferenceRevision;
 		browser.storage.local.get('outputFormat').then(({ outputFormat }) => {
 			if (outputFormatPreferenceRevision === initialRevision) setOutputFormatPreference(outputFormat);
@@ -90,6 +93,8 @@
 		console.warn('[Copy LaTeX] Failed to watch output format preference:', error);
 	}
 
+	// Convert the selection and choose its output format without copying it yet
+	// This runs during the copy event, before the browser copies the text
 	function prepareSelectionOutput(selection, format) {
 		if (typeof ns.selection?.toMarkdown !== 'function') {
 			return { ok: false, error: 'Selection-to-Markdown conversion is not available' };
@@ -109,12 +114,14 @@
 		}
 	}
 
+	// Method 1: Try the browser clipboard API
 	async function copyTextToClipboard(text) {
 		try {
 			if (!navigator.clipboard?.writeText) throw new Error('Clipboard API is unavailable');
 			await navigator.clipboard.writeText(text);
 			return { ok: true, method: 'navigator_api' };
 		} catch (clipboardError) {
+			// Method 2: If the clipboard API fails, use a temporary textarea and execCommand instead
 			let textBox;
 			try {
 				textBox = document.createElement('textarea');
@@ -135,6 +142,7 @@
 		}
 	}
 
+	// Ctrl+C starts a copy event. Set clipboardData before the browser copies the text
 	function writeSelectionToCopyEvent(event) {
 		if (!outputFormatLoaded || !event?.clipboardData) return false;
 		const result = prepareSelectionOutput(window.getSelection(), cachedOutputFormat);
@@ -173,7 +181,10 @@
 		})();
 	});
 
-	// SELECTION COPY: background.js dispatches this for the context-menu action.
+	// SELECTION COPY
+	// The background script sends this request after the context-menu item is clicked
+	// selection-to-markdown.js reads the live selection, clones it and converts the HTML to Markdown
+	// output.js converts the Markdown to Typst when needed and copies the result
 	browser.runtime.onMessage.addListener((message) => {
 		if (message?.type !== 'convertSelectionToMarkdown') return;
 		return convertAndCopySelection(window.getSelection());

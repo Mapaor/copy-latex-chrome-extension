@@ -1,6 +1,10 @@
 (() => {
 	const ns = (window.CopyLatex = window.CopyLatex || {});
 
+	// CONTEXT
+	// The popup saves this preference in browser.storage.local
+	// Keep a local copy because the copy event cannot wait for a storage read
+	// Missing preference means the override stays disabled
 	let overrideSelectionCopy = false;
 	let overrideSelectionCopyPreferenceRevision = 0;
 
@@ -15,6 +19,7 @@
 			setOverrideSelectionCopyPreference(changes.overrideSelectionCopy.newValue);
 		});
 
+		// Keep a new setting change if it arrives before this first read finishes
 		const initialRevision = overrideSelectionCopyPreferenceRevision;
 		browser.storage.local.get('overrideSelectionCopy').then(({ overrideSelectionCopy: preference }) => {
 			if (overrideSelectionCopyPreferenceRevision === initialRevision) {
@@ -38,6 +43,7 @@
 		}
 	}
 
+	// Keep normal copy behavior when the user is editing text
 	function isEditableTarget(target) {
 		if (document.designMode === 'on') return true;
 		const elements = [target, document.activeElement].filter((element) => element instanceof Element);
@@ -46,6 +52,9 @@
 		));
 	}
 
+	// Record the shortcut but do not block the keydown event
+	// If conversion fails, the browser can still copy the selected text
+	// output.js changes the clipboard text during the copy event
 	document.addEventListener('keydown', (event) => {
 		if (
 			!overrideSelectionCopy ||
@@ -65,9 +74,10 @@
 
 		pendingSelectionCopyShortcut = true;
 		if (pendingSelectionCopyTimeout !== null) window.clearTimeout(pendingSelectionCopyTimeout);
-		pendingSelectionCopyTimeout = window.setTimeout(clearPendingSelectionCopyShortcut, 1000);
+		pendingSelectionCopyTimeout = window.setTimeout(clearPendingSelectionCopyShortcut, 1000); // Clear the shortcut if no copy event follows
 	}, true);
 
+	// Only change the copy event after Ctrl+C or Command+C (when a page selection is active)
 	document.addEventListener('copy', (event) => {
 		if (!pendingSelectionCopyShortcut) return;
 		clearPendingSelectionCopyShortcut();
@@ -77,6 +87,7 @@
 		}
 	}, true);
 
+	// Clear the pending shortcut if no copy event happens
 	document.addEventListener('keyup', (event) => {
 		if (event.key.toLowerCase() === 'c') clearPendingSelectionCopyShortcut();
 	}, true);
