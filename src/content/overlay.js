@@ -3,9 +3,7 @@
 	ns.state = ns.state || {
 		overlay: null,
 		currentTarget: null,
-		lastMathJaxV3Latex: null,
-		lastCopyGestureTs: 0,
-		lastCopiedTex: null,
+
 		themeMode: 'system',
 		themeModeLoaded: false,
 	};

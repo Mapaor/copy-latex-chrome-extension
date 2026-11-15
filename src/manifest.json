@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Copy LaTeX (KaTeX & MathJax & Wikipedia Imgs)",
-  "version": "1.6.4",
+  "version": "1.7.0",
   "description": "Hover and click to copy LaTeX expressions on ChatGPT, DeepSeek, Wikipedia, Stack Exchange and other math-related websites.",
   "icons": { "48": "icons/icon48.png" },
   "permissions": ["contextMenus", "storage", "clipboardWrite"],
@@ -22,6 +22,7 @@
         "lib/polyfill/browser-polyfill.min.js",
         "content/utils/svg.js",
         "content/utils/dom.js",
+        "content/detection-registry.js",
         "content/detection.js",
         "content/overlay.js",
         "content/output.js",
