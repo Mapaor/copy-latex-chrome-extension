@@ -3,16 +3,78 @@
 	ns.state = ns.state || {
 		overlay: null,
 		currentTarget: null,
-		lastMathJaxV3Latex: null,
-		lastCopyGestureTs: 0,
-		lastCopiedTex: null,
+		mathJaxV3LatexById: new Map(),
 	};
 
-	// Inject the MathJax bridge script to be able to use the MathJax API (as explained in mathjax-bridge.js)
+	const MATHJAX_INDEX_MESSAGE = 'CopyLaTeX_MathJaxIndex';
+	const MATHJAX_ID_PATTERN = /^copy-latex-mjx-[a-z0-9]+-[a-z0-9]+-\d+$/;
+	const MAX_MATHJAX_INDEX_BATCH = 100;
+	const MAX_MATHJAX_INDEX_ENTRIES = 2000;
+	const MAX_MATHJAX_LATEX_LENGTH = 100_000;
+
+	window.addEventListener('message', (event) => {
+		if (event.source !== window || event.origin !== window.location.origin) return;
+		const message = event.data;
+		if (
+			!message ||
+			typeof message !== 'object' ||
+			Array.isArray(message) ||
+			message.type !== MATHJAX_INDEX_MESSAGE ||
+			message.version !== 1 ||
+			!Array.isArray(message.removedIds) ||
+			!Array.isArray(message.updates)
+		) {
+			return;
+		}
+
+		const { removedIds, updates } = message;
+		if (removedIds.length > MAX_MATHJAX_INDEX_BATCH || updates.length > MAX_MATHJAX_INDEX_BATCH) return;
+
+		const messageIds = new Set();
+		for (const id of removedIds) {
+			if (typeof id !== 'string' || !MATHJAX_ID_PATTERN.test(id) || messageIds.has(id)) return;
+			messageIds.add(id);
+		}
+		for (const update of updates) {
+			if (
+				!update ||
+				typeof update !== 'object' ||
+				Array.isArray(update) ||
+				typeof update.id !== 'string' ||
+				!MATHJAX_ID_PATTERN.test(update.id) ||
+				typeof update.latex !== 'string' ||
+				!update.latex.trim() ||
+				update.latex.length > MAX_MATHJAX_LATEX_LENGTH ||
+				messageIds.has(update.id)
+			) {
+				return;
+			}
+			messageIds.add(update.id);
+		}
+
+		const texById = ns.state.mathJaxV3LatexById || (ns.state.mathJaxV3LatexById = new Map());
+		const liveIds = new Set();
+		for (const container of document.querySelectorAll('mjx-container[data-copy-latex-mathjax-id]')) {
+			const id = container.getAttribute('data-copy-latex-mathjax-id');
+			if (container.isConnected && id && MATHJAX_ID_PATTERN.test(id)) liveIds.add(id);
+		}
+
+		for (const id of texById.keys()) {
+			if (!liveIds.has(id)) texById.delete(id);
+		}
+		for (const id of removedIds) texById.delete(id);
+		for (const update of updates) {
+			if (!liveIds.has(update.id)) continue;
+			if (!texById.has(update.id) && texById.size >= MAX_MATHJAX_INDEX_ENTRIES) continue;
+			texById.set(update.id, update.latex.trim());
+		}
+	});
+
+	// Inject after installing the listener so the initial index message cannot be missed.
 	async function injectMathJaxPageScript() {
 		try {
 			const scriptUrl = browser.runtime.getURL('content/injected/mathjax-bridge.js');
-			const script = document.createElement('script'); // It's just a <script></script> inserted at the end of the body
+			const script = document.createElement('script');
 			script.src = scriptUrl;
 			document.documentElement.appendChild(script);
 		} catch (error) {
@@ -20,14 +82,6 @@
 		}
 	}
 	injectMathJaxPageScript();
-
-	// Listen for messages from the bridge script and update the ns.state if mathjax is detected
-	window.addEventListener('message', (event) => {
-    if (event.source !== window) return;
-    if (event.data && event.data.type === 'CopyLaTeX_MathJaxV3') {
-			ns.state.lastMathJaxV3Latex = event.data.latex;
-		}
-	});
 
 	// Show overlay for that math root (detection contains the latex code, the math root and the target element to be used for positioning)
   function showOverlayForDetection(detection) {
@@ -54,7 +108,7 @@
 		const related = event.relatedTarget;
 		// Keep the overlay visible while moving onto the overlay or to other equations
 		if (related?.closest?.('.hoverlatex-overlay')) return;
-		if (ns.detect.findCandidateAncestors(related).length > 0) return;
+		if (ns.detect.findCandidatesFromTarget(related).length > 0) return;
 
 		currentTarget.classList.remove('hoverlatex-hover');
 		ns.output.hideOverlay();
@@ -81,14 +135,16 @@
 		const detection = ns.detect.detectFromTarget(event.target);
 		if (!detection) return;
 
-		// KaTeX sometimes has duplicates and it can trigger both pointerdown and clicks for one gesture
-		// In that case (<700ms between events) we skip the second copy
-		// TODO: Analize if it can happen for other kinds
-		if (detection.kind === 'katex') {
-			const now = Date.now();
-			if (ns.state.lastCopiedTex === detection.tex && now - ns.state.lastCopyGestureTs < 700) return;
-			ns.state.lastCopyGestureTs = now;
-			ns.state.lastCopiedTex = detection.tex;
+		const policy = detection.duplicatePolicy;
+		if (policy) {
+			const key = detection[policy.key];
+			if (key !== undefined && key !== null) {
+				const lastCopies = ns.state.lastCopiesByPolicy || (ns.state.lastCopiesByPolicy = Object.create(null));
+				const now = Date.now();
+				const previous = lastCopies[policy.id];
+				if (previous?.key === key && now - previous.timestamp < policy.windowMs) return;
+				lastCopies[policy.id] = { key, timestamp: now };
+			}
 		}
 
 		ns.output.copyLatex(detection.tex);

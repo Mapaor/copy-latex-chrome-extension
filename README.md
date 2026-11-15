@@ -64,14 +64,15 @@ And now the custom site should appear as a new toggle in the "Permissions and da
 through the [`window`](https://developer.mozilla.org/en-US/docs/Web/API/Window) API (using the `window.CopyLatex` object), each one exposing a little API to the others.
 
   - `overlay.js` simply contains the logic and position of the overlay when hovering over an equation.
-  - `detection.js` contains the detection of DOM elements that contain the rellevant LaTeX source. There all cases are listed (KaTeX, MathJax, Wikipedia, ChatGPT, StackExchange, etc.), so this is the script that contains the actual detection and it's therefore the one that is updated more regularly.
-  - `output.js` reads (the LaTeX or selection), converts (to Typst math, Markdown, or Typst), and copies it to clipboard.
+  - `detection-registry.js` lists the supported math renderers and each site-specific detection strategies. This is the script that contains the actual detection and it's therefore the one that is gonna be updated more regularly.
+  - `detection.js` runs those strategies to locate math in the DOM and extract the LaTeX code (both for hover and for selection)
+  - `output.js` reads (the LaTeX code or selection already converted to markdown), converts (to Typst math, Markdown, or Typst), and copies it to clipboard.
   
       Note: The browser APIs and clipboard operations are `async` because they are beyond permissions of content scripts (which are tab specific), these are browser-wide (the copied latex in one tab need to be pasteable to other tabs).
   - `main.js` receives hover and click events, uses `detection.js` API to see if it's math or not and then calls the `overlay.js` and `output.js` APIs.
 
       For MathJax v3/v4, the main script also injects `mathjax-bridge.js` into the
-      page to be able to use the MathJax API. It then sends the LaTeX back using `window.postMessage`.
+      page to be able to use the MathJax API. The bridge obtains the LaTeX and sends it back to the content script using `window.postMessage`.
 - `popup.js` has the logic and settings of the popup UI. It reads and writes the prefered settings to the local storage (`browser.storage.local`).
 - `background.js` runs within the extension context (whole browser, not a page script, not a content script), it reads local storage to see if preferences have changed and act on it (for example hide the context menu option), read more about it [here](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Background_scripts).
 
@@ -116,16 +117,19 @@ It is MIT Licensed so that anyone can customize it to their needs but please don
 If you have an idea for a new feature open an issue and let me know! Also if you have the time to implement a feature you want it would be great if you made a pull request.
 
 ## Roadmap
-### To-do minor improvements
+### To-do minor improvements or fixes
 Some minor things to fix or improve (for when I have the time):
-- [ ] In the copy selection (both to Markdown and to Typst) feature fix the Wikipedia case (don't detect images that contain the `mwe-math` related classes as images).
+- [X] In the copy selection (both to Markdown and to Typst) feature fix the Wikipedia case (don't detect images that contain the `mwe-math` related classes as images).
 - [X] Add support for new ChatGPT custom table rendering
+- [X] Fix new google search math rendering 
 - [ ] Fix overlay overflow in very large pages
-- [ ] Improve the documentation of the extension (the screenshots and GIFs are of previous versions). Maybe even create a website for the extension using another repo and GH pages.
 
-### Internal refactorings
+### Internal improvements
 - [X] Unify detection for single equations and for equations in range of a selection into a single one
-- [ ] Rewrite detection.js so that there is a single registry containing all detection specific rules for each kind of math rendering (to make it easier to add new kinds of math rendering of specific websites)
+- [X] Rewrite detection.js so that there is a single registry containing all detection specific rules for each kind of math rendering (to make it easier to add new kinds of math rendering of specific websites)
+- [ ] Improve the documentation of the extension (the screenshots and GIFs are of previous versions). 
+- [ ] Maybe even create a website for the extension using another repo and GH pages.
+- [ ] Create a set of single-file html files that serve to test the extension for all the different math kinds (kinds defined in detection.js).
 
 ### Planned features:
 - [X] **Text selection to Markdown**: Select some text that includes equations, right click and a new option "[Extension Icon] Copy as Markdown" appears.
