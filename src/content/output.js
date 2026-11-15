@@ -22,11 +22,14 @@
 	}
 
 	// SINGLE EQUATION COPY
-	async function copyLatex(tex) {
+	async function copyLatex(tex, { showOverlayFeedback = ns.state.showOverlay !== false } = {}) {
+		let overlay = null;
 		try {
-			let overlay = ns.state.overlay;
-			if (!overlay && typeof ns.output?.createOverlay === 'function') {
-				overlay = ns.output.createOverlay();
+			if (showOverlayFeedback) {
+				overlay = ns.state.overlay;
+				if (!overlay && typeof ns.output?.createOverlay === 'function') {
+					overlay = ns.output.createOverlay();
+				}
 			}
 
       // Get [LaTeX|Typst] preference from local storage
@@ -39,21 +42,42 @@
       // Copy to clipboard
 			await navigator.clipboard.writeText(outputText);
 
-      // Show 'Copied!' on the overlay
-			overlay.classList.add('copied'); // copied class makes the overlay green
-			const span = overlay.querySelector('span');
-			span.textContent = 'Copied! ';
-			span.appendChild(ns.svg.createSvgFromString(ns.svg.check_svg)); // Add checkmark SVG icon
-			setTimeout(() => {
-				overlay.classList.remove('copied');
-				span.textContent = 'Click to copy'; // This also removes all child nodes of span (including the SVG checkmark icon)
-			}, 1500); // Restore the overlay after 1.5s
+	      // Show 'Copied!' only when overlay feedback is enabled
+			if (overlay) {
+				overlay.classList.add('copied'); // copied class makes the overlay green
+				const span = overlay.querySelector('span');
+				if (span) {
+					span.textContent = 'Copied! ';
+					span.appendChild(ns.svg.createSvgFromString(ns.svg.check_svg)); // Add checkmark SVG icon
+					setTimeout(() => {
+						overlay.classList.remove('copied');
+						span.textContent = 'Click to copy'; // This also removes all child nodes of span (including the SVG checkmark icon)
+					}, 1500); // Restore the overlay after 1.5s
+				}
+			}
+			return { ok: true, format };
 		} catch (err) {
 			console.error('[Copy LaTeX] Clipboard error:', err);
+			return { ok: false, error: String(err) };
 		}
 	}
 
 
+
+	// SINGLE EQUATION CONTEXT MENU (For hidden overlay)
+	// Copy the equation (cached by main.js)
+	browser.runtime.onMessage.addListener((message) => {
+		if (message?.type !== 'copyContextEquation') return;
+
+		return (async () => {
+			const snapshot = ns.state.contextMenuEquation;
+			ns.state.contextMenuEquation = null;
+			if (!snapshot?.tex || Date.now() - snapshot.timestamp > 30_000) {
+				return { ok: false, error: 'No recent equation was detected under the context menu' };
+			}
+			return copyLatex(snapshot.tex, { showOverlayFeedback: false });
+		})();
+	});
 
 	// SELECTION COPY
   // The background.js script sends the (selection conversion) request

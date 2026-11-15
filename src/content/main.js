@@ -6,6 +6,36 @@
 		mathJaxV3LatexById: new Map(),
 	};
 
+	ns.state.showOverlay = ns.state.showOverlay !== false;
+	ns.state.contextMenuEquation = ns.state.contextMenuEquation || null;
+
+	let showOverlayPreferenceRevision = 0;
+	function setShowOverlayPreference(value) {
+		ns.state.showOverlay = value !== false;
+		if (ns.state.showOverlay) return;
+
+		ns.state.currentTarget?.classList.remove('hoverlatex-hover');
+		ns.state.currentTarget = null;
+		ns.output.hideOverlay();
+	}
+
+	try {
+		browser.storage.onChanged.addListener((changes, areaName) => {
+			if (areaName !== 'local' || !changes.showOverlay) return;
+			showOverlayPreferenceRevision += 1;
+			setShowOverlayPreference(changes.showOverlay.newValue);
+		});
+
+		const initialRevision = showOverlayPreferenceRevision;
+		browser.storage.local.get('showOverlay').then(({ showOverlay }) => {
+			if (showOverlayPreferenceRevision === initialRevision) setShowOverlayPreference(showOverlay);
+		}).catch((error) => {
+			console.warn('[Copy LaTeX] Failed to read showOverlay preference:', error);
+		});
+	} catch (error) {
+		console.warn('[Copy LaTeX] Failed to watch showOverlay preference:', error);
+	}
+
 	const MATHJAX_INDEX_MESSAGE = 'CopyLaTeX_MathJaxIndex';
 	const MATHJAX_ID_PATTERN = /^copy-latex-mjx-[a-z0-9]+-[a-z0-9]+-\d+$/;
 	const MAX_MATHJAX_INDEX_BATCH = 100;
@@ -85,6 +115,7 @@
 
 	// Show overlay for that math root (detection contains the latex code, the math root and the target element to be used for positioning)
   function showOverlayForDetection(detection) {
+		if (!ns.state.showOverlay) return;
 		ns.state.currentTarget = detection.element;
 		detection.element.classList.add('hoverlatex-hover');
 		ns.output.showOverlay(detection.overlayTarget || detection.element, detection.tex);
@@ -92,9 +123,17 @@
 
 	// Hovering
 	document.addEventListener('mouseover', (event) => {
+		if (!ns.state.showOverlay) return;
 		const detection = ns.detect.detectFromTarget(event.target);
 		if (detection) showOverlayForDetection(detection);
 	});
+
+	// Cache the equation under the native context menu
+	document.addEventListener('contextmenu', (event) => {
+		const detection = ns.detect.detectFromTarget(event.target);
+		const tex = typeof detection?.tex === 'string' ? detection.tex.trim() : '';
+		ns.state.contextMenuEquation = tex ? { tex, timestamp: Date.now() } : null;
+	}, { capture: true });
 
 	// Not hovering anymore
 	document.addEventListener('mouseout', (event) => {

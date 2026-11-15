@@ -65,7 +65,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ==== SETTINGS ====
 
-  // SHOW CONTEXT MENU (checked, unchecked)
+  // SHOW OVERLAY ON HOVER (checked, unchecked)
+  const showOverlayOptionCheckbox = document.getElementById('showOverlayOption');
+  const overlayResult = await browser.storage.local.get('showOverlay');
+  showOverlayOptionCheckbox.checked = (overlayResult.showOverlay === undefined) ? true : !!overlayResult.showOverlay;
+  showOverlayOptionCheckbox.addEventListener('change', async () => {
+    await browser.storage.local.set({ showOverlay: showOverlayOptionCheckbox.checked });
+  });
+
+  // SHOW COPY SELECTION OPTION (checked, unchecked)
   const contextMenuOptionCheckbox = document.getElementById('contextMenuOption');
   const cmResult = await browser.storage.local.get('showContextMenu');
   const showContextMenu = cmResult.showContextMenu;
