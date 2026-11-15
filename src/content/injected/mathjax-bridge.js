@@ -1,73 +1,221 @@
-// Problem: In MathJax v3/v4 the LaTeX source code is not present in the DOM
-// Solution: We can use the MathJax API (which exposes the LaTeX source code)
-// New problem: A content script runs in an isolated JS world and therefore it does not have
-// access to the page MathJax object.
-// Solution to that: We set this script as a `web_accessible_resource` so that the content script (main.js)
-// can inject it as a normal page script (like adding <script></script> inside the page HTML).
-// New problem: If we had to inject a script to every page it would not be quite ideal design and it could conflict with MathJax v2
-// Simple solution: We only inject the mathjax bridge script if the page contains MathJax v3/v4, well
-// to be precise, we do inject the script in all pages but when we detect it does not contain MathJax v3/v4 we exit (empty function)
-
+// This page-world bridge maps MathJax MathItems to their exact mjx-container
+// roots, then sends the association to the isolated content-script world.
 (function () {
-	// Exit early when the site is not running MathJax v3/v4
-	var mathjax = window.MathJax;
-	var version = mathjax && mathjax.version ? mathjax.version : null;
-	if (!mathjax || !(version && (version.startsWith('3') || version.startsWith('4')))) {
-		return;
+	const OUTPUT_ID_ATTRIBUTE = 'data-copy-latex-mathjax-id';
+	const MESSAGE_TYPE = 'CopyLaTeX_MathJaxIndex';
+	const BATCH_SIZE = 100;
+	const randomToken = Math.random().toString(36).slice(2) || '0';
+	const idPrefix = `copy-latex-mjx-${Date.now().toString(36)}-${randomToken}-`;
+
+	let mathjax = null;
+	let pendingMathJax = null;
+	let nextId = 0;
+	let rebuildScheduled = false;
+	const sourcesById = new Map();
+	const rootsById = new Map();
+
+	function isSupportedMathJax(candidate) {
+		const version = candidate?.version;
+		return Boolean(version && (version.startsWith('3') || version.startsWith('4')));
 	}
 
-	// MathJax stores the LaTeX in its internal list of math items, we can access it trough the MathJax API
-	// by walking the list or by simply using the new function `MathJax.startup.document.getMathItemsWithin()`.
-	// TODO: see if using the new API function would benefit in any way
-  function getLatexForContainer(mjxContainer) {
-    if (typeof mathjax === 'undefined' || !mathjax.startup || !mathjax.startup.document || !mathjax.startup.document.math) {
-        return null;
-    }
+	function getMathItems(candidate) {
+		const mathDocument = candidate?.startup?.document;
+		if (!mathDocument) return [];
 
-    const targetHTML = mjxContainer.innerHTML; // Read the HTML of the provided container
-    let current = mathjax.startup.document.math.list; // Get the list of math items using the MathJax API
-
-		while (current && current.data) {
-			const mathItem = current.data; // The math item is stored in the data field of the list element
-      if (
-        mathItem.typesetRoot &&
-        mathItem.typesetRoot.innerHTML === targetHTML // (current element inner HTML === targeted element inner HTML)
-      ) {
-				if (mathItem.math && typeof mathItem.math === 'string') {
-					return mathItem.math.trim(); // The latex is stored inside the data.math of each list element
-				}
+		if (typeof mathDocument.getMathItemsWithin === 'function') {
+			try {
+				return mathDocument.getMathItemsWithin(document.body || document.documentElement) || [];
+			} catch (error) {
+				console.warn('[Copy LaTeX] MathJax getMathItemsWithin failed:', error);
 			}
-			current = current.next;
-      if (current === mathjax.startup.document.math.list) { // Back on the starting point (it's a circular list)
-        break;
-      }
 		}
-		return null; // No LaTeX code found in the list of math items
-  }
 
-  // Listens for an event (hover or click)
-  // detects if the targeted element is a child of a mathjax container
-  // if it is, it gets it's LaTeX code and sends it
-  // as a runtime message (so that main.js can read it)
-  function handleMathJaxEvent(event) {
-    const mjx = event.target.closest('mjx-container');
-    if (!mjx) return;
+		// Fallback for integrations where the convenience API is unavailable.
+		const list = mathDocument.math?.list;
+		if (!list) return [];
 
-    const latex = getLatexForContainer(mjx);
-    if (!latex) return;
+		const items = [];
+		const visited = new Set();
+		let current = list;
+		while (current && !visited.has(current)) {
+			visited.add(current);
+			if (current.data) items.push(current.data);
+			current = current.next;
+		}
+		return items;
+	}
 
-    window.postMessage(
-      {
-        type: 'CopyLaTeX_MathJaxV3',
-        latex,
-        mjxId: mjx.getAttribute('ctxtmenu_counter'),
-      },
-      '*'
-    );
-  }
+	function getOutputRoot(mathItem) {
+		const root = mathItem?.typesetRoot;
+		if (root?.nodeType !== Node.ELEMENT_NODE) return null;
+		if (root.matches('mjx-container')) return root;
 
- 	// On hover get the LaTeX of the container and send it as a message
-  document.addEventListener('mouseover', handleMathJaxEvent, true);
-  // Also send it in the case of a click (just in case someone is using the extension in mobile and can click but cannot hover)
-  document.addEventListener('click', handleMathJaxEvent, true);
+		// Some integrations may expose a wrapper as typesetRoot. Accept it only
+		// when it contains exactly one MathJax output root, avoiding ambiguous matches.
+		const nestedRoots = root.querySelectorAll('mjx-container');
+		return nestedRoots.length === 1 ? nestedRoots[0] : null;
+	}
+
+	function getOrAssignId(root, usedIds) {
+		let id = root.getAttribute(OUTPUT_ID_ATTRIBUTE);
+		if (!id?.startsWith(idPrefix) || usedIds.has(id)) {
+			id = `${idPrefix}${++nextId}`;
+			root.setAttribute(OUTPUT_ID_ATTRIBUTE, id);
+		}
+		usedIds.add(id);
+		return id;
+	}
+
+	function postIndexChanges(updates, removedIds) {
+		const batchCount = Math.max(
+			Math.ceil(updates.length / BATCH_SIZE),
+			Math.ceil(removedIds.length / BATCH_SIZE)
+		);
+		for (let batch = 0; batch < batchCount; batch++) {
+			window.postMessage(
+				{
+					type: MESSAGE_TYPE,
+					version: 1,
+					updates: updates.slice(batch * BATCH_SIZE, (batch + 1) * BATCH_SIZE),
+					removedIds: removedIds.slice(batch * BATCH_SIZE, (batch + 1) * BATCH_SIZE),
+				},
+				'*'
+			);
+		}
+	}
+
+	function rebuildIndex() {
+		if (!mathjax) return;
+
+		const nextSources = new Map();
+		const nextRoots = new Map();
+		const usedIds = new Set();
+		for (const mathItem of getMathItems(mathjax)) {
+			const root = getOutputRoot(mathItem);
+			const latex = typeof mathItem.math === 'string' ? mathItem.math.trim() : '';
+			if (!root?.isConnected || !latex) continue;
+
+			const id = getOrAssignId(root, usedIds);
+			nextSources.set(id, latex);
+			nextRoots.set(id, root);
+		}
+
+		const updates = [];
+		for (const [id, latex] of nextSources) {
+			if (sourcesById.get(id) !== latex) updates.push({ id, latex });
+		}
+
+		const removedIds = [];
+		for (const [id, root] of rootsById) {
+			if (nextRoots.has(id)) continue;
+			removedIds.push(id);
+			if (root.getAttribute(OUTPUT_ID_ATTRIBUTE) === id) root.removeAttribute(OUTPUT_ID_ATTRIBUTE);
+		}
+
+		sourcesById.clear();
+		rootsById.clear();
+		for (const [id, latex] of nextSources) sourcesById.set(id, latex);
+		for (const [id, root] of nextRoots) rootsById.set(id, root);
+		postIndexChanges(updates, removedIds);
+	}
+
+	function nodeContainsMathJaxOutput(node) {
+		if (!(node instanceof Element)) return false;
+		return node.matches('mjx-container') || Boolean(node.querySelector('mjx-container'));
+	}
+
+	function mutationTouchesMathJaxOutput(mutation) {
+		const target = mutation.target instanceof Element ? mutation.target : mutation.target.parentElement;
+		if (target?.closest?.('mjx-container')) return true;
+		for (const node of [...mutation.addedNodes, ...mutation.removedNodes]) {
+			if (nodeContainsMathJaxOutput(node)) return true;
+		}
+		return false;
+	}
+
+	function scheduleIndexRebuild() {
+		if (rebuildScheduled) return;
+		rebuildScheduled = true;
+		const rebuild = () => {
+			rebuildScheduled = false;
+			rebuildIndex();
+		};
+		if (typeof window.requestAnimationFrame === 'function') {
+			window.requestAnimationFrame(rebuild);
+		} else {
+			window.setTimeout(rebuild, 0);
+		}
+	}
+
+	function startProvider(candidate) {
+		if (mathjax === candidate || !candidate?.startup?.document) return false;
+		mathjax = candidate;
+		rebuildIndex();
+
+		const outputObserver = new MutationObserver((mutations) => {
+			if (mutations.some(mutationTouchesMathJaxOutput)) scheduleIndexRebuild();
+		});
+		outputObserver.observe(document.documentElement, { childList: true, subtree: true });
+		return true;
+	}
+
+	function tryInitialize() {
+		const candidate = window.MathJax;
+		if (!isSupportedMathJax(candidate)) return false;
+		if (candidate === mathjax || candidate === pendingMathJax) return true;
+
+		const startupPromise = candidate.startup?.promise;
+		if (startupPromise && typeof startupPromise.then === 'function') {
+			pendingMathJax = candidate;
+			startupPromise.then(
+				() => {
+					if (pendingMathJax === candidate) pendingMathJax = null;
+					if (window.MathJax === candidate) startProvider(candidate);
+				},
+				(error) => {
+					if (pendingMathJax === candidate) pendingMathJax = null;
+					console.warn('[Copy LaTeX] MathJax startup failed:', error);
+				}
+			);
+			return true;
+		}
+
+		return startProvider(candidate);
+	}
+
+	function watchForLateMathJax() {
+		if (tryInitialize()) return;
+
+		let startupObserver = null;
+		const retryInitialization = () => {
+			const started = tryInitialize();
+			const current = window.MathJax;
+			const unsupportedVersion = current?.version && !isSupportedMathJax(current);
+			if (started || unsupportedVersion) startupObserver?.disconnect();
+			return started;
+		};
+
+		for (const script of document.querySelectorAll('script[src*="mathjax" i]')) {
+			script.addEventListener('load', retryInitialization);
+		}
+
+		const candidate = window.MathJax;
+		if (!candidate || (candidate.version && !isSupportedMathJax(candidate)) || !document.documentElement) return;
+
+		// Only wait on pages that already expose a MathJax config object; ordinary
+		// non-MathJax pages and MathJax v2 pages pay no observer cost.
+		startupObserver = new MutationObserver(retryInitialization);
+		startupObserver.observe(document.documentElement, { childList: true, subtree: true });
+		const stopWaiting = () => {
+			if (!retryInitialization()) startupObserver?.disconnect();
+		};
+		if (document.readyState === 'complete') {
+			window.setTimeout(stopWaiting, 1000);
+		} else {
+			window.addEventListener('load', stopWaiting, { once: true });
+		}
+	}
+
+	watchForLateMathJax();
 })();

@@ -3,9 +3,7 @@
 	ns.state = ns.state || {
 		overlay: null,
 		currentTarget: null,
-		lastMathJaxV3Latex: null,
-		lastCopyGestureTs: 0,
-		lastCopiedTex: null,
+
 	};
 
   // Translate LaTeX equations to Typst equations using the tex2typst library
