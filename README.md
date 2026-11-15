@@ -71,7 +71,7 @@ through the [`window`](https://developer.mozilla.org/en-US/docs/Web/API/Window) 
   - `main.js` receives hover and click events, uses `detection.js` API to see if it's math or not and then calls the `overlay.js` and `output.js` APIs.
 
       For MathJax v3/v4, the main script also injects `mathjax-bridge.js` into the
-      page to be able to use the MathJax API. It then sends the LaTeX back using `window.postMessage`.
+      page to be able to use the MathJax API. The bridge obtains the LaTeX and sends it back to the content script using `window.postMessage`.
 - `popup.js` has the logic and settings of the popup UI. It reads and writes the prefered settings to the local storage (`browser.storage.local`).
 - `background.js` runs within the extension context (whole browser, not a page script, not a content script), it reads local storage to see if preferences have changed and act on it (for example hide the context menu option), read more about it [here](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Background_scripts).
 
@@ -118,14 +118,16 @@ If you have an idea for a new feature open an issue and let me know! Also if you
 ## Roadmap
 ### To-do minor improvements
 Some minor things to fix or improve (for when I have the time):
-- [ ] In the copy selection (both to Markdown and to Typst) feature fix the Wikipedia case (don't detect images that contain the `mwe-math` related classes as images).
+- [X] In the copy selection (both to Markdown and to Typst) feature fix the Wikipedia case (don't detect images that contain the `mwe-math` related classes as images).
 - [X] Add support for new ChatGPT custom table rendering
 - [ ] Fix overlay overflow in very large pages
-- [ ] Improve the documentation of the extension (the screenshots and GIFs are of previous versions). Maybe even create a website for the extension using another repo and GH pages.
 
-### Internal refactorings
+### Internal improvements
 - [X] Unify detection for single equations and for equations in range of a selection into a single one
-- [ ] Rewrite detection.js so that there is a single registry containing all detection specific rules for each kind of math rendering (to make it easier to add new kinds of math rendering of specific websites)
+- [X] Rewrite detection.js so that there is a single registry containing all detection specific rules for each kind of math rendering (to make it easier to add new kinds of math rendering of specific websites)
+- [ ] Improve the documentation of the extension (the screenshots and GIFs are of previous versions). 
+- [ ] Maybe even create a website for the extension using another repo and GH pages.
+- [ ] Create a set of single-file html files that serve to test the extension for all the different math kinds (kinds defined in detection.js).
 
 ### Planned features:
 - [X] **Text selection to Markdown**: Select some text that includes equations, right click and a new option "[Extension Icon] Copy as Markdown" appears.
