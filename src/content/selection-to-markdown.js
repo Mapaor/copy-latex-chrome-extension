@@ -121,6 +121,8 @@
 
     // TODO: Handle ChatGPT custom table rendering
 
+    // TODO: Add a settings option to choose the bulleted list marker for Turndown (* or -)
+
     // TURNDOWN LIBRARY + GFM PLUGIN
     // Used locally (inside lib/), their original sources can be found at npm via unpkg or jsdelivr
     // Turndown library: https://unpkg.com/turndown/dist/turndown.js

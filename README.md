@@ -135,6 +135,7 @@ Some minor things to fix or improve (for when I have the time):
 - [X] **Hide option in context menu**:  Allow users to hide the copy selection feature when right-clicking (for those who don't need it and want a less clustered context menu).
 - [ ] **Hide overlay option**: Option to remove the overlay on hover, and instead copy the equationis via context menu
 - [ ] **Hijack Ctrl+C for selection to Markdown option**: Option to enable Ctrl+C to work as selection to Markdown without the need to open the context menu.
+- [ ] **Choose the bulleted list marker**: Option to choose between * or - for markdown unordered lists.
 - [ ] **Custom  delimiters**: 
 Config option to chose between no delimiters (default), `$` and `$$`, `\(` and `\[`, always `$`, or always `$$`.
 - [ ] **Custom translations**. Allow to replace the 'Click to copy', 'Copied!', 'Copy as Markdown' and 'Copy as Typst' messages to be replaced by custom ones.
