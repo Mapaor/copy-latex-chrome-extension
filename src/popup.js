@@ -1,6 +1,15 @@
-// Load and display current format preference and context menu option
 document.addEventListener('DOMContentLoaded', async () => {
-  // Theme application logic
+
+  // === UTILITY FUNCTIONS ===
+
+  function restorePopupHeight() {
+    body.classList.remove('expanded');
+  }
+
+  function increasePopupHeight() {
+    body.classList.add('expanded');
+  }
+
   function applyTheme(theme) {
     document.body.classList.remove('theme-light', 'theme-dark', 'theme-system');
     if (theme === 'light') {
@@ -12,53 +21,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Theme radio buttons logic
-  const themeRadios = document.querySelectorAll('input[name="themeMode"]');
-  const themeResult = await browser.storage.local.get('themeMode');
-  const themeMode = themeResult.themeMode || 'system';
-  for (const radio of themeRadios) {
-    radio.checked = radio.value === themeMode;
-    radio.addEventListener('change', async (e) => {
-      if (e.target.checked) {
-        await browser.storage.local.set({ themeMode: e.target.value });
-        applyTheme(e.target.value);
-      }
-    });
-  }
-  applyTheme(themeMode);
+  // ==== TOGGLE LATEX-TYPST ====
 
-  // Format toggle logic
+  // Toggle button [LaTeX|Typst], unchecked means LaTeX checked means Typst
   const toggle = document.getElementById('formatToggle');
   const result = await browser.storage.local.get('outputFormat');
   const isTypst = result.outputFormat === 'typst';
   toggle.checked = isTypst;
 
-  // Save preference on change
+  // Listen for changes on the toggle button
   toggle.addEventListener('change', async (e) => {
     const format = e.target.checked ? 'typst' : 'latex';
-    await browser.storage.local.set({ outputFormat: format });
+    await browser.storage.local.set({ outputFormat: format }); // Save preference
   });
 
-  // Config/settings panel logic
+  // === SETTINGS PANEL STATE ===
+
+  // Note: the settings panel state (open or closed) is not saved anywhere, it's only for that popup instance
+  // which is the intended UX (a new popup will always have the settings collapsed)
   const configBtn = document.getElementById('configBtn');
   const settingsPanel = document.getElementById('settingsPanel');
   let panelOpen = false;
   const body = document.body;
 
-  function restorePopupHeight() {
-    body.classList.remove('expanded');
-  }
-
-  configBtn.addEventListener('click', (e) => {
+  configBtn.addEventListener('click', (e) => { // Settings button clicked
     panelOpen = !panelOpen;
-    settingsPanel.style.display = panelOpen ? 'block' : 'none';
+    settingsPanel.style.display = panelOpen ? 'block' : 'none'; // Show/hide settings
     if (panelOpen) {
-      body.classList.add('expanded');
+      increasePopupHeight();
     } else {
       restorePopupHeight();
     }
   });
 
+  // Clicking the popup but outside the settings panel collapses the settings
   document.addEventListener('mousedown', (e) => {
     if (panelOpen && !settingsPanel.contains(e.target) && !configBtn.contains(e.target)) {
       settingsPanel.style.display = 'none';
@@ -67,14 +63,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Context menu option checkbox logic
+  // ==== SETTINGS ====
+
+  // SHOW CONTEXT MENU (checked, unchecked)
   const contextMenuOptionCheckbox = document.getElementById('contextMenuOption');
   const cmResult = await browser.storage.local.get('showContextMenu');
-  // Default to true if undefined
   const showContextMenu = cmResult.showContextMenu;
-  contextMenuOptionCheckbox.checked = (showContextMenu === undefined) ? true : !!showContextMenu;
-  // Save the preference when the checkbox is toggled
-  contextMenuOptionCheckbox.addEventListener('change', async () => {
-    await browser.storage.local.set({ showContextMenu: contextMenuOptionCheckbox.checked });
+  contextMenuOptionCheckbox.checked = (showContextMenu === undefined) ? true : !!showContextMenu; // Defaults to true if undefined
+  contextMenuOptionCheckbox.addEventListener('change', async () => { // Listen for changes on the checkbox
+    await browser.storage.local.set({ showContextMenu: contextMenuOptionCheckbox.checked }); // Save the preference
   });
+
+  // THEME (Light, Dark, System)
+  const themeRadios = document.querySelectorAll('input[name="themeMode"]');
+  const themeResult = await browser.storage.local.get('themeMode');
+  const themeMode = themeResult.themeMode || 'system';
+  for (const radio of themeRadios) {
+    radio.checked = radio.value === themeMode;
+    radio.addEventListener('change', async (e) => { // Listen for checkbox change events
+      if (e.target.checked) {
+        await browser.storage.local.set({ themeMode: e.target.value }); // Save theme preference
+        applyTheme(e.target.value); // Apply theme preference
+      }
+    });
+  }
+  applyTheme(themeMode);
 });
