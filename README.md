@@ -100,7 +100,7 @@ There is also a Chrome version of this extension. Check it out here: [https://gi
 
 ## Acknowledgements
 
-Credits to @leander-ow for his dark mode contribution and to  @ashigirl96 for suggesting and providing a working code implementation for the copy selection as Markdown feature. 
+Credits to @leander-ow for his dark mode contribution and to @ashigirl96 for suggesting and providing a working code implementation for the copy selection as Markdown feature, and to @deralbert for his ChatGPT custom rendering fix.
 
 This extension also works thanks to the following open source projects:
 - [Turndown](https://github.com/mixmark-io/turndown) - Library for converting HTML to Markdown
