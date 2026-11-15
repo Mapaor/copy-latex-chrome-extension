@@ -1,5 +1,5 @@
-// This page-world bridge maps MathJax MathItems to their exact mjx-container
-// roots, then sends the association to the isolated content-script world.
+// MathJax v3/v4 keeps the original LaTeX in its API, not in the rendered HTML
+// This script can access that API and sends the LaTeX to main.js with an ID for each mjx-container
 (function () {
 	const OUTPUT_ID_ATTRIBUTE = 'data-copy-latex-mathjax-id';
 	const MESSAGE_TYPE = 'CopyLaTeX_MathJaxIndex';
@@ -33,7 +33,7 @@
 			}
 		}
 
-		// Fallback for integrations where the convenience API is unavailable.
+		// If getMathItemsWithin is not available, read the math items from MathJax's linked list instead
 		const list = mathDocument.math?.list;
 		if (!list) return [];
 
@@ -53,13 +53,14 @@
 		if (root?.nodeType !== Node.ELEMENT_NODE) return null;
 		if (root.matches('mjx-container')) return root;
 
-		// Some integrations may expose a wrapper as typesetRoot. Accept it only
-		// when it contains exactly one MathJax output root, avoiding ambiguous matches.
+		// Usually typesetRoot is the mjx-container itself
+		// Some integrations wrap it, so only use the nested container if there is exactly one
 		const nestedRoots = root.querySelectorAll('mjx-container');
 		return nestedRoots.length === 1 ? nestedRoots[0] : null;
 	}
 
 	function getOrAssignId(root, usedIds) {
+		// Add an ID to each container so main.js can match it with the LaTeX we send
 		let id = root.getAttribute(OUTPUT_ID_ATTRIBUTE);
 		if (!id?.startsWith(idPrefix) || usedIds.has(id)) {
 			id = `${idPrefix}${++nextId}`;
@@ -70,6 +71,7 @@
 	}
 
 	function postIndexChanges(updates, removedIds) {
+		// Send the changes in batches so pages with lots of equations don't send one huge message
 		const batchCount = Math.max(
 			Math.ceil(updates.length / BATCH_SIZE),
 			Math.ceil(removedIds.length / BATCH_SIZE)
@@ -87,6 +89,7 @@
 		}
 	}
 
+	// MathJax can add or remove equations after the page loads, so rebuild the index when its output changes
 	function rebuildIndex() {
 		if (!mathjax) return;
 
@@ -156,6 +159,7 @@
 		mathjax = candidate;
 		rebuildIndex();
 
+		// Watch for MathJax containers being added or removed and update the index
 		const outputObserver = new MutationObserver((mutations) => {
 			if (mutations.some(mutationTouchesMathJaxOutput)) scheduleIndexRebuild();
 		});
@@ -168,6 +172,7 @@
 		if (!isSupportedMathJax(candidate)) return false;
 		if (candidate === mathjax || candidate === pendingMathJax) return true;
 
+		// Wait for MathJax to finish starting before reading its math items
 		const startupPromise = candidate.startup?.promise;
 		if (startupPromise && typeof startupPromise.then === 'function') {
 			pendingMathJax = candidate;
@@ -206,8 +211,7 @@
 		const candidate = window.MathJax;
 		if (!candidate || (candidate.version && !isSupportedMathJax(candidate)) || !document.documentElement) return;
 
-		// Only wait on pages that already expose a MathJax config object; ordinary
-		// non-MathJax pages and MathJax v2 pages pay no observer cost.
+		// If MathJax is loading but not ready yet, watch the page and try again
 		startupObserver = new MutationObserver(retryInitialization);
 		startupObserver.observe(document.documentElement, { childList: true, subtree: true });
 		const stopWaiting = () => {
