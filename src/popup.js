@@ -82,6 +82,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     await browser.storage.local.set({ showContextMenu: contextMenuOptionCheckbox.checked }); // Save the preference
   });
 
+  // OVERRIDE CTRL+C FOR SELECTION (unchecked by default)
+  const overrideSelectionCopyOption = document.getElementById('overrideSelectionCopyOption');
+  const overrideSelectionCopyResult = await browser.storage.local.get('overrideSelectionCopy');
+  overrideSelectionCopyOption.checked = overrideSelectionCopyResult.overrideSelectionCopy === true;
+  overrideSelectionCopyOption.addEventListener('change', async () => {
+    await browser.storage.local.set({ overrideSelectionCopy: overrideSelectionCopyOption.checked });
+  });
+
   // THEME (Light, Dark, System)
   const themeRadios = document.querySelectorAll('input[name="themeMode"]');
   const themeResult = await browser.storage.local.get('themeMode');

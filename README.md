@@ -140,7 +140,7 @@ Some minor things to fix or improve (for when I have the time):
 - [X] **Theme selection**: Config option to choose the theme (light, dark or system)
 - [X] **Hide option in context menu**:  Allow users to hide the copy selection feature when right-clicking (for those who don't need it and want a less clustered context menu).
 - [X] **Hide overlay option**: Allow to hide the hover overlay and use the right-click 'Copy equation' menu item instead.
-- [ ] **Hijack Ctrl+C for selection to Markdown option**: Option to enable Ctrl+C to work as selection to Markdown without the need to open the context menu.
+- [X] **Hijack Ctrl+C for selection**: Option to copy selection (as Markdown or Typst) without having to open the context menu.
 - [ ] **Choose the bulleted list marker**: Option to choose between * or - for markdown unordered lists.
 - [ ] **Custom  delimiters**: 
 Config option to chose between no delimiters (default), `$` and `$$`, `\(` and `\[`, always `$`, or always `$$`.
