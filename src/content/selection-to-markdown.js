@@ -119,7 +119,15 @@
       img.setAttribute('src', img.src);
     });
 
-    // TODO: Handle ChatGPT custom table rendering
+    // ChatGPT Fix for Tables
+    // ChatGPT wraps each cell value in a <p> element, the problem is that Turndown treats paragraphs as block elements
+    // this means that Turndown will add undesired blank lines between table cells.
+    // The solution is to remove this <p> wrappers
+    // <td><p><span>Bla</span></p></td> -> <td><span>Bla</span></td>
+    container.querySelectorAll('table th > p, table td > p').forEach((paragraph) => {
+      paragraph.replaceWith(...paragraph.childNodes);
+    });
+
     // TODO: Add a settings option to choose the bulleted list marker for Turndown (* or -)
 
     // TURNDOWN LIBRARY + GFM PLUGIN
