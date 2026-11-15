@@ -117,10 +117,11 @@ It is MIT Licensed so that anyone can customize it to their needs but please don
 If you have an idea for a new feature open an issue and let me know! Also if you have the time to implement a feature you want it would be great if you made a pull request.
 
 ## Roadmap
-### To-do minor improvements
+### To-do minor improvements or fixes
 Some minor things to fix or improve (for when I have the time):
 - [X] In the copy selection (both to Markdown and to Typst) feature fix the Wikipedia case (don't detect images that contain the `mwe-math` related classes as images).
 - [X] Add support for new ChatGPT custom table rendering
+- [X] Fix new google search math rendering 
 - [ ] Fix overlay overflow in very large pages
 
 ### Internal improvements
