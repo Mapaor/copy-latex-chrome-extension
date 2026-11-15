@@ -25,18 +25,12 @@
 		key: 'tex',
 		windowMs: 700,
 	};
-	const SHARED_DETECTOR_CHAIN = [
-		'katex-data-math-source',
-		'katex-annotation',
-		'katex-attributes',
-		'data-math',
-		'mathjax-v3-v4-api',
-		'mathjax-v2',
-	];
 
 	const DETECTION_REGISTRY = [
 		{
 			id: 'wikipedia-mathjax-data-mw',
+			site: 'wikipedia',
+			appliesTo: isWikipedia,
 			candidates: [candidateRule('mathjax-container', ['mjx-container'])],
 			matches: (el, context) => context.site === 'wikipedia' && isHtmlElementNamed(el, 'mjx-container'),
 			extractTex: extractWikipediaMathJaxDataMwTex,
@@ -46,6 +40,8 @@
 		},
 		{
 			id: 'wikipedia-image-alt',
+			site: 'wikipedia',
+			appliesTo: isWikipedia,
 			candidates: [
 				candidateRule('wikipedia-images', [
 					'img.mwe-math',
@@ -62,6 +58,8 @@
 		},
 		{
 			id: 'google-ai-data-xpm',
+			site: 'google-search',
+			appliesTo: isGoogleSearch,
 			candidates: [
 				candidateRule('google-xpm-copy-root', ['[data-xpm-copy-root][data-xpm-latex]']),
 				candidateRule('google-xpm-latex', ['[data-xpm-latex]']),
@@ -124,7 +122,6 @@
 			getDisplayMode: (el) => el.matches('.MathJax_Display, .MJXc-display') ? 'display' : 'inline',
 		},
 	];
-	const DETECTORS_BY_ID = new Map(DETECTION_REGISTRY.map((detector) => [detector.id, detector]));
 
 	function sameStringList(left, right) {
 		return left.length === right.length && left.every((value, index) => value === right[index]);
@@ -132,7 +129,15 @@
 
 	function buildCandidateGroupRegistry() {
 		const groups = new Map();
+		const detectorIds = new Set();
 		for (const entry of DETECTION_REGISTRY) {
+			if (!entry.id || detectorIds.has(entry.id)) {
+				throw new Error(`[Copy LaTeX] Missing or duplicate detector ID: ${entry.id}`);
+			}
+			detectorIds.add(entry.id);
+			if (entry.site && typeof entry.appliesTo !== 'function') {
+				throw new Error(`[Copy LaTeX] Site detector "${entry.id}" requires appliesTo()`);
+			}
 			for (const rule of entry.candidates) {
 				const existing = groups.get(rule.group);
 				if (existing) {
@@ -142,14 +147,12 @@
 					if (!sameStringList(existing.selectors, rule.selectors) || !relationsMatch) {
 						throw new Error(`[Copy LaTeX] Conflicting candidate group: ${rule.group}`);
 					}
-					existing.detectorIds.push(entry.id);
 					continue;
 				}
 
 				groups.set(rule.group, {
 					...rule,
 					selector: rule.selectors.join(', '),
-					detectorIds: [entry.id],
 				});
 			}
 		}
@@ -157,36 +160,6 @@
 	}
 
 	const CANDIDATE_GROUPS = buildCandidateGroupRegistry();
-	const COMMON_CANDIDATE_GROUPS = [
-		'katex',
-		'data-math',
-		'mathjax-container',
-		'mathjax-v2-display',
-		'mathjax-v2-inline',
-	];
-	const SITE_CANDIDATE_PROFILES = {
-		wikipedia: {
-			id: 'wikipedia',
-			targetCandidateGroups: ['wikipedia-images', ...COMMON_CANDIDATE_GROUPS],
-			subtreeCandidateGroups: ['wikipedia-images', ...COMMON_CANDIDATE_GROUPS],
-			rangeCandidateGroups: ['wikipedia-images', ...COMMON_CANDIDATE_GROUPS],
-			detectorChain: ['wikipedia-mathjax-data-mw', 'wikipedia-image-alt', ...SHARED_DETECTOR_CHAIN],
-		},
-		googleSearch: {
-			id: 'google-search',
-			targetCandidateGroups: ['google-xpm-copy-root', 'google-xpm-latex', ...COMMON_CANDIDATE_GROUPS],
-			subtreeCandidateGroups: ['google-xpm-copy-root', 'google-xpm-latex', ...COMMON_CANDIDATE_GROUPS],
-			rangeCandidateGroups: ['google-xpm-copy-root', 'google-xpm-latex', ...COMMON_CANDIDATE_GROUPS],
-			detectorChain: ['google-ai-data-xpm', ...SHARED_DETECTOR_CHAIN],
-		},
-		default: {
-			id: 'default',
-			targetCandidateGroups: [...COMMON_CANDIDATE_GROUPS],
-			subtreeCandidateGroups: [...COMMON_CANDIDATE_GROUPS],
-			rangeCandidateGroups: [...COMMON_CANDIDATE_GROUPS],
-			detectorChain: SHARED_DETECTOR_CHAIN,
-		},
-	};
 	const candidateGroupCache = new Map();
 	const candidateSelectorCache = new Map();
 	const detectorChainCache = new Map();
@@ -195,27 +168,47 @@
 	// ==== CHECKS (boolean helper functions) ====
 
 	function getActiveSiteProfile() {
-		if (isWikipedia()) return SITE_CANDIDATE_PROFILES.wikipedia;
-		if (isGoogleSearch()) return SITE_CANDIDATE_PROFILES.googleSearch;
-		return SITE_CANDIDATE_PROFILES.default;
+		const applicableSiteDetectors = DETECTION_REGISTRY.filter(
+			(detector) => detector.site && detector.appliesTo()
+		);
+		const id = applicableSiteDetectors[0]?.site || 'default';
+		const siteSpecificDetectors = applicableSiteDetectors.filter((detector) => detector.site === id);
+		const cacheKey = `${id}:${siteSpecificDetectors.map(({ id: detectorId }) => detectorId).join(',')}`;
+		return { id, cacheKey, siteSpecificDetectors };
 	}
 
 	function getDetectorChain(profile) {
-		if (detectorChainCache.has(profile.id)) return detectorChainCache.get(profile.id);
-		const chain = profile.detectorChain.map((detectorId) => {
-			const detector = DETECTORS_BY_ID.get(detectorId);
-			if (!detector) throw new Error(`[Copy LaTeX] Unknown detector: ${detectorId}`);
-			return detector;
-		});
-		detectorChainCache.set(profile.id, chain);
+		if (detectorChainCache.has(profile.cacheKey)) return detectorChainCache.get(profile.cacheKey);
+		const shared = DETECTION_REGISTRY.filter((detector) => !detector.site);
+		const chain = [...profile.siteSpecificDetectors, ...shared];
+		detectorChainCache.set(profile.cacheKey, chain);
 		return chain;
 	}
 
 	function getCandidateGroups(profile, operation) {
-		const cacheKey = `${profile.id}:${operation}`;
+		const cacheKey = `${profile.cacheKey}:${operation}`;
 		if (candidateGroupCache.has(cacheKey)) return candidateGroupCache.get(cacheKey);
 
-		const groups = profile[`${operation}CandidateGroups`].map((groupId) => {
+		const siteSpecific = profile.siteSpecificDetectors;
+		const shared = DETECTION_REGISTRY.filter((detector) => !detector.site);
+		const sharedGroupIds = new Set(shared.flatMap((detector) => detector.candidates.map(({ group }) => group)));
+		const orderedGroupIds = [];
+		const seen = new Set();
+		const addGroups = (entries, isShared) => {
+			for (const entry of entries) {
+				for (const rule of entry.candidates) {
+					if (!rule[operation].length) continue;
+					if (!isShared && sharedGroupIds.has(rule.group)) continue;
+					if (seen.has(rule.group)) continue;
+					seen.add(rule.group);
+					orderedGroupIds.push(rule.group);
+				}
+			}
+		};
+		addGroups(siteSpecific, false);
+		addGroups(shared, true);
+
+		const groups = orderedGroupIds.map((groupId) => {
 			const group = CANDIDATE_GROUPS.get(groupId);
 			if (!group) throw new Error(`[Copy LaTeX] Unknown candidate group: ${groupId}`);
 			return group;
@@ -225,7 +218,7 @@
 	}
 
 	function getCandidateSelector(profile, operation, relation) {
-		const cacheKey = `${profile.id}:${operation}:${relation}`;
+		const cacheKey = `${profile.cacheKey}:${operation}:${relation}`;
 		if (candidateSelectorCache.has(cacheKey)) return candidateSelectorCache.get(cacheKey);
 
 		const selectors = new Set();
