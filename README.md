@@ -119,7 +119,7 @@ If you have an idea for a new feature open an issue and let me know! Also if you
 ### To-do minor improvements
 Some minor things to fix or improve (for when I have the time):
 - [ ] In the copy selection (both to Markdown and to Typst) feature fix the Wikipedia case (don't detect images that contain the `mwe-math` related classes as images).
-- [ ] Add support for new ChatGPT custom table rendering
+- [X] Add support for new ChatGPT custom table rendering
 - [ ] Fix overlay overflow in very large pages
 - [ ] Improve the documentation of the extension (the screenshots and GIFs are of previous versions). Maybe even create a website for the extension using another repo and GH pages.
 
