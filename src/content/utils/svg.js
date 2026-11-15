@@ -1,3 +1,4 @@
+// SVG icon utilities
 (() => {
 	const ns = (window.CopyLatex = window.CopyLatex || {});
 
@@ -8,7 +9,7 @@
 		'<svg class="check-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 -1 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 5 9 17l-5-5"/></svg>';
 
 	function createSvgFromString(svgString) {
-    // Use DOMParser to safely parse SVG strings without innerHTML security warnings
+    // We use DOMParser to safely parse SVG strings instead of using innerHTML (which generates security warnings on review)
 		const parser = new DOMParser();
 		const doc = parser.parseFromString(svgString, 'image/svg+xml');
 		return doc.documentElement;
@@ -20,4 +21,3 @@
 		createSvgFromString,
 	};
 })();
-
