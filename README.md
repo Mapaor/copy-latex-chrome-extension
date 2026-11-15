@@ -1,6 +1,6 @@
 # CopyLaTeX
 
-A Chrome (and [Firefox](#firefox-version)) extension that lets you quickly copy LaTeX code (KaTeX or MathJax) from equations displayed on websites like ChatGPT, DeepSeek, or any blog using mathematical equations. It works simply by hovering over an equation and clicking to copy the LaTeX expression.
+A Chrome (and [Firefox](#firefox-version)) extension that lets you quickly copy LaTeX code (KaTeX or MathJax) from equations displayed on websites like ChatGPT, DeepSeek, StackExchange, or any blog using mathematical equations.
 
 Version 1.1: Now it also works with with Wikipedia and Wikiwand images.
 
@@ -13,6 +13,8 @@ Version 1.4: New feature! Select text (that includes formulas), right click on i
 Version 1.5: Now with Typst support!
 
 Version 1.6: A new config button in the popup UI that allows some basic customization (like choosing the theme or hiding the 'copy as' feature in the context menu).
+
+Version 1.7: New 'Show overlay on hover' setting (enabled by default), if disabled equations can be copied through a 'Copy equation' context-menu item.
 
 ## Example GIFs
 #### KaTeX
@@ -157,7 +159,7 @@ Some minor things to fix or improve (for when I have the time):
   Pop up with a toggle between LaTeX and Typst
 - [X] **Theme selection**: Config option to choose the theme (light, dark or system)
 - [X] **Hide option in context menu**:  Allow users to hide the copy selection feature when right-clicking (for those who don't need it and want a less clustered context menu).
-- [ ] **Hide overlay option**: Option to remove the overlay on hover, and instead copy the equationis via context menu
+- [X] **Hide overlay option**: Allow to hide the hover overlay and use the right-click 'Copy equation' menu item instead.
 - [ ] **Hijack Ctrl+C for selection to Markdown option**: Option to enable Ctrl+C to work as selection to Markdown without the need to open the context menu.
 - [ ] **Choose the bulleted list marker**: Option to choose between * or - for markdown unordered lists.
 - [ ] **Custom  delimiters**: 
