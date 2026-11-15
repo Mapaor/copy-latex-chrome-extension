@@ -64,8 +64,9 @@ And now the custom site should appear as a new toggle in the "Permissions and da
 through the [`window`](https://developer.mozilla.org/en-US/docs/Web/API/Window) API (using the `window.CopyLatex` object), each one exposing a little API to the others.
 
   - `overlay.js` simply contains the logic and position of the overlay when hovering over an equation.
-  - `detection.js` contains the detection of DOM elements that contain the rellevant LaTeX source. There all cases are listed (KaTeX, MathJax, Wikipedia, ChatGPT, StackExchange, etc.), so this is the script that contains the actual detection and it's therefore the one that is updated more regularly.
-  - `output.js` reads (the LaTeX or selection), converts (to Typst math, Markdown, or Typst), and copies it to clipboard.
+  - `detection-registry.js` lists the supported math renderers and each site-specific detection strategies. This is the script that contains the actual detection and it's therefore the one that is gonna be updated more regularly.
+  - `detection.js` runs those strategies to locate math in the DOM and extract the LaTeX code (both for hover and for selection)
+  - `output.js` reads (the LaTeX code or selection already converted to markdown), converts (to Typst math, Markdown, or Typst), and copies it to clipboard.
   
       Note: The browser APIs and clipboard operations are `async` because they are beyond permissions of content scripts (which are tab specific), these are browser-wide (the copied latex in one tab need to be pasteable to other tabs).
   - `main.js` receives hover and click events, uses `detection.js` API to see if it's math or not and then calls the `overlay.js` and `output.js` APIs.
