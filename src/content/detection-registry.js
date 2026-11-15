@@ -89,7 +89,7 @@
 
 		// In case no LaTeX code is found, fallback to nearby TeX script nodes (used in some MathJax integrations)
 		let current = mjxContainer;
-		for (let i = 0; i < 5; i++) { // TODO: Understand why 5
+		for (let i = 0; i < 5; i++) { // Note: 5 is kinda arbitrary here (siblings scanned), to avoid a too broad scanning
 			current = current.nextElementSibling;
 			if (!current) break;
 			if (
@@ -130,51 +130,42 @@
 		return el.closest('.katex-display') ? 'display' : 'inline';
 	}
 
-	function extractMathJaxTex(el) {
-		// MathJax v2 display equations have their latex code in a script math/tex sibling
-		const mathJaxDisplay = el?.matches?.('.MathJax_Display, .MJXc-display') // MathJax v2 display equations can be Identified by these classes
-			? el
-			: null;
-		if (mathJaxDisplay) {
-			let sibling = mathJaxDisplay.nextElementSibling;
-			while (sibling) {
-				if (isHtmlElementNamed(sibling, 'script') && sibling.type === 'math/tex; mode=display') {
-					return sibling.textContent.trim() || null;
-				}
-				sibling = sibling.nextElementSibling;
-			}
-		}
-
-		// MathJax v2 inline equations work the same way (via the sibling script)
-		const mathJaxInline = el?.matches?.('.MathJax, .mjx-chtml, .MathJax_CHTML, .MathJax_MathML') // MathJax v2 inline equations can be Identified by these classes
-			? el
-			: null;
-		if (!mathJaxInline) return null;
-
-		// If it has a MathJax-Element-[something] id, it won't contain mode=display
-		if (mathJaxInline.id?.includes('MathJax-Element-')) {
-			let sibling = mathJaxInline.nextElementSibling;
-			while (sibling) {
-				if (isHtmlElementNamed(sibling, 'script') && sibling.type === 'math/tex') {
-					return sibling.textContent.trim() || null;
-				}
-				sibling = sibling.nextElementSibling;
-			}
-		}
-
-		// If it does not have a MathJax-Element-[something] id, it will contain mode=display deespite being an inline equation
-		// TODO: Maybe these 3 MathJax v2 detectors (that have prectially the same code) can be refactored together via an auxiliar function
-		let sibling = mathJaxInline.nextElementSibling;
+	function findFollowingMathJaxTex(el, scriptTypes) {
+		// Return undefined when no matching script exists, so an empty matching script still stops the search.
+		let sibling = el.nextElementSibling;
 		while (sibling) {
-			if (
-				isHtmlElementNamed(sibling, 'script') &&
-				(sibling.type === 'math/tex' || sibling.type === 'math/tex; mode=display')
-			) {
+			if (isHtmlElementNamed(sibling, 'script') && scriptTypes.includes(sibling.type)) {
 				return sibling.textContent.trim() || null;
 			}
 			sibling = sibling.nextElementSibling;
 		}
-		return null;
+		return undefined;
+	}
+
+	function extractMathJaxTex(el) {
+		// MathJax v2 display equations have their LaTeX code in a following math/tex; mode=display script.
+		const mathJaxDisplay = el?.matches?.('.MathJax_Display, .MJXc-display') // MathJax v2 display equations can be identified by these classes
+			? el
+			: null;
+		if (mathJaxDisplay) {
+			const tex = findFollowingMathJaxTex(mathJaxDisplay, ['math/tex; mode=display']);
+			if (tex !== undefined) return tex;
+		}
+
+		// MathJax v2 inline equations work the same way (via the sibling script)
+		const mathJaxInline = el?.matches?.('.MathJax, .mjx-chtml, .MathJax_CHTML, .MathJax_MathML') // MathJax v2 inline equations can be identified by these classes
+			? el
+			: null;
+		if (!mathJaxInline) return null;
+
+		// If it has a MathJax-Element-[something] id, check for a math/tex script first.
+		if (mathJaxInline.id?.includes('MathJax-Element-')) {
+			const tex = findFollowingMathJaxTex(mathJaxInline, ['math/tex']);
+			if (tex !== undefined) return tex;
+		}
+
+		// As a fallback, also check for either script type alongside inline equations.
+		return findFollowingMathJaxTex(mathJaxInline, ['math/tex', 'math/tex; mode=display']) ?? null;
 	}
 
 	const KATEX_ENTRIES = [
