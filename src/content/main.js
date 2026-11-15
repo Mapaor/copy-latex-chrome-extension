@@ -9,30 +9,63 @@
 	const MATHJAX_INDEX_MESSAGE = 'CopyLaTeX_MathJaxIndex';
 	const MATHJAX_ID_PATTERN = /^copy-latex-mjx-[a-z0-9]+-[a-z0-9]+-\d+$/;
 	const MAX_MATHJAX_INDEX_BATCH = 100;
+	const MAX_MATHJAX_INDEX_ENTRIES = 2000;
+	const MAX_MATHJAX_LATEX_LENGTH = 100_000;
 
 	window.addEventListener('message', (event) => {
-		if (event.source !== window) return;
+		if (event.source !== window || event.origin !== window.location.origin) return;
 		const message = event.data;
-		if (message?.type !== MATHJAX_INDEX_MESSAGE || message.version !== 1) return;
+		if (
+			!message ||
+			typeof message !== 'object' ||
+			Array.isArray(message) ||
+			message.type !== MATHJAX_INDEX_MESSAGE ||
+			message.version !== 1 ||
+			!Array.isArray(message.removedIds) ||
+			!Array.isArray(message.updates)
+		) {
+			return;
+		}
 
-		const removedIds = Array.isArray(message.removedIds) ? message.removedIds : [];
-		const updates = Array.isArray(message.updates) ? message.updates : [];
+		const { removedIds, updates } = message;
 		if (removedIds.length > MAX_MATHJAX_INDEX_BATCH || updates.length > MAX_MATHJAX_INDEX_BATCH) return;
 
-		const texById = ns.state.mathJaxV3LatexById || (ns.state.mathJaxV3LatexById = new Map());
+		const messageIds = new Set();
 		for (const id of removedIds) {
-			if (typeof id === 'string' && MATHJAX_ID_PATTERN.test(id)) texById.delete(id);
+			if (typeof id !== 'string' || !MATHJAX_ID_PATTERN.test(id) || messageIds.has(id)) return;
+			messageIds.add(id);
 		}
 		for (const update of updates) {
 			if (
 				!update ||
+				typeof update !== 'object' ||
+				Array.isArray(update) ||
 				typeof update.id !== 'string' ||
 				!MATHJAX_ID_PATTERN.test(update.id) ||
 				typeof update.latex !== 'string' ||
-				!update.latex.trim()
+				!update.latex.trim() ||
+				update.latex.length > MAX_MATHJAX_LATEX_LENGTH ||
+				messageIds.has(update.id)
 			) {
-				continue;
+				return;
 			}
+			messageIds.add(update.id);
+		}
+
+		const texById = ns.state.mathJaxV3LatexById || (ns.state.mathJaxV3LatexById = new Map());
+		const liveIds = new Set();
+		for (const container of document.querySelectorAll('mjx-container[data-copy-latex-mathjax-id]')) {
+			const id = container.getAttribute('data-copy-latex-mathjax-id');
+			if (container.isConnected && id && MATHJAX_ID_PATTERN.test(id)) liveIds.add(id);
+		}
+
+		for (const id of texById.keys()) {
+			if (!liveIds.has(id)) texById.delete(id);
+		}
+		for (const id of removedIds) texById.delete(id);
+		for (const update of updates) {
+			if (!liveIds.has(update.id)) continue;
+			if (!texById.has(update.id) && texById.size >= MAX_MATHJAX_INDEX_ENTRIES) continue;
 			texById.set(update.id, update.latex.trim());
 		}
 	});

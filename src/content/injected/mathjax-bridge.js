@@ -4,6 +4,8 @@
 	const OUTPUT_ID_ATTRIBUTE = 'data-copy-latex-mathjax-id';
 	const MESSAGE_TYPE = 'CopyLaTeX_MathJaxIndex';
 	const BATCH_SIZE = 100;
+	const MAX_INDEX_ENTRIES = 2000;
+	const MAX_LATEX_LENGTH = 100_000;
 	const randomToken = Math.random().toString(36).slice(2) || '0';
 	const idPrefix = `copy-latex-mjx-${Date.now().toString(36)}-${randomToken}-`;
 
@@ -92,9 +94,10 @@
 		const nextRoots = new Map();
 		const usedIds = new Set();
 		for (const mathItem of getMathItems(mathjax)) {
+			if (nextSources.size >= MAX_INDEX_ENTRIES) break;
 			const root = getOutputRoot(mathItem);
 			const latex = typeof mathItem.math === 'string' ? mathItem.math.trim() : '';
-			if (!root?.isConnected || !latex) continue;
+			if (!root?.isConnected || !latex || latex.length > MAX_LATEX_LENGTH) continue;
 
 			const id = getOrAssignId(root, usedIds);
 			nextSources.set(id, latex);
