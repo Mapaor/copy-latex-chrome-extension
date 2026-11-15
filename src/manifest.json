@@ -48,6 +48,7 @@
       "js": [
         "content/utils/svg.js",
         "content/utils/dom.js",
+        "content/detection-registry.js",
         "content/detection.js",
         "content/overlay.js",
         "content/output.js",
