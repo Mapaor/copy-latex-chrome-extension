@@ -25,6 +25,7 @@
     "https://*.notion.site/*",
     "https://www.notion.so/*",
     "https://*.wikipedia.org/*",
+    "https://*.zhihu.com/*",
     "https://www.wikiwand.com/*",
     "https://wikimedia.org/*",
     "https://*.wikiversity.org/*",

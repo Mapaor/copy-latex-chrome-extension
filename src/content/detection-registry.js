@@ -36,8 +36,11 @@
 		return hostname === 'www.google.com' || hostname.endsWith('.google.com') || hostname.startsWith('www.google.');
 	}
 
-	// In the old function we used tagName, but the HTML tagName can vary across namespaces
-	// In this new version (after detection unification) we check both the HTML namespace and the localName
+	function isZhihu() {
+		const hostname = window.location.hostname;
+		return hostname === 'zhihu.com' || hostname.endsWith('.zhihu.com'); // For example zhuanlan.zhihu.com
+	}
+
 	function isHtmlElementNamed(el, localName) {
 		return el?.namespaceURI === HTML_NAMESPACE && el.localName === localName;
 	}
@@ -46,7 +49,7 @@
 		return classNames.some((className) => el.classList.contains(className));
 	}
 
-	// ==== DETECTORS ====
+	// ====== EXTRACTOR HELPER FUNCTIONS ======
 
 	function extractWikipediaMathJaxDataMwTex(el) {
 		if (!isHtmlElementNamed(el, 'mjx-container')) return null;
@@ -79,7 +82,7 @@
 	}
 
 	function extractMathJaxV3Tex(el) {
-		// MathJax v3/v4 renders into an HTML custom element `mjx-container`, not a MathML <math> node.
+		// MathJax v3/v4 renders into an HTML custom element (`mjx-container`), not a MathML <math> node
 		const mjxContainer = isHtmlElementNamed(el, 'mjx-container') ? el : null;
 		if (!mjxContainer) return null;
 
@@ -126,12 +129,36 @@
 		return dataLatex?.trim() || null;
 	}
 
+	function extractZhihuTex(el) {
+		const value = el.getAttribute('data-tex')?.trim();
+		if (!value) return null;
+
+		const delimiterPairs = [
+			['\\[', '\\]'],
+			['\\(', '\\)'],
+			['$$', '$$'],
+			['$', '$'],
+		];
+		for (const [opening, closing] of delimiterPairs) {
+			if (value.startsWith(opening) && value.endsWith(closing)) {
+				return value.slice(opening.length, -closing.length).trim() || null;
+			}
+		}
+		return value;
+	}
+
+	function getZhihuDisplayMode(el) {
+		const script = el.querySelector('script[type^="math/tex"]');
+		const type = script?.getAttribute('type')?.replace(/\s/g, '').toLowerCase() || '';
+		return type.includes('mode=display') ? 'display' : 'inline';
+	}
+
 	function getKatexDisplayMode(el) {
 		return el.closest('.katex-display') ? 'display' : 'inline';
 	}
 
 	function findFollowingMathJaxTex(el, scriptTypes) {
-		// Return undefined when no matching script exists, so an empty matching script still stops the search.
+		// Return undefined when no matching script exists
 		let sibling = el.nextElementSibling;
 		while (sibling) {
 			if (isHtmlElementNamed(sibling, 'script') && scriptTypes.includes(sibling.type)) {
@@ -143,7 +170,7 @@
 	}
 
 	function extractMathJaxTex(el) {
-		// MathJax v2 display equations have their LaTeX code in a following math/tex; mode=display script.
+		// MathJax v2 display equations have their LaTeX code in a sibling math/tex script with mode=display
 		const mathJaxDisplay = el?.matches?.('.MathJax_Display, .MJXc-display') // MathJax v2 display equations can be identified by these classes
 			? el
 			: null;
@@ -158,13 +185,13 @@
 			: null;
 		if (!mathJaxInline) return null;
 
-		// If it has a MathJax-Element-[something] id, check for a math/tex script first.
+		// If it has a MathJax-Element-[something] id, check for a math/tex script first
 		if (mathJaxInline.id?.includes('MathJax-Element-')) {
 			const tex = findFollowingMathJaxTex(mathJaxInline, ['math/tex']);
 			if (tex !== undefined) return tex;
 		}
 
-		// As a fallback, also check for either script type alongside inline equations.
+		// As a fallback, also check for either script type alongside inline equations
 		return findFollowingMathJaxTex(mathJaxInline, ['math/tex', 'math/tex; mode=display']) ?? null;
 	}
 
@@ -195,6 +222,10 @@
 		},
 	];
 
+
+
+	// ========= DETECTION REGISTRY ==========
+
 	const DETECTION_REGISTRY = [
 		{
 			id: 'wikipedia-mathjax-data-mw',
@@ -224,6 +255,15 @@
 				hasAnyClass(el, ['mwe-math', 'mwe-math-fallback-image-inline', 'mwe-math-fallback-image-display']),
 			extractTex: extractWikipediaImageAltTex,
 			getDisplayMode: (el) => el.classList.contains('mwe-math-fallback-image-display') ? 'display' : 'inline',
+		},
+		{
+			id: 'zhihu-data-tex',
+			site: 'zhihu',
+			appliesTo: isZhihu,
+			candidates: [candidateRule('zhihu-math', ['.ztext-math[data-tex]'])],
+			matches: (el, context) => context.site === 'zhihu' && el.matches('.ztext-math[data-tex]'),
+			extractTex: extractZhihuTex,
+			getDisplayMode: getZhihuDisplayMode,
 		},
 		{
 			id: 'google-ai-data-xpm',
