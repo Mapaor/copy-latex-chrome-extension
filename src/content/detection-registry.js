@@ -173,6 +173,18 @@
     return el.closest(".katex-display") ? "display" : "inline";
   }
 
+  function extractGoogleSearchTex(el) {
+    const latex =
+      el.getAttribute("data-xpm-latex") ||
+      el.querySelector("[data-xpm-latex]")?.getAttribute("data-xpm-latex");
+    return latex?.trim() || null;
+  }
+
+  function getGoogleSearchDisplayMode(el) {
+    const root = el.closest("[data-xpm-copy-root]") || el;
+    return root.style.display === "inline-flex" ? "display" : "inline";
+  }
+
   function findFollowingMathJaxTex(el, scriptTypes) {
     // Return undefined when no matching script exists
     let sibling = el.nextElementSibling;
@@ -240,7 +252,12 @@
       extractTex: extractAnnotationTex,
       getDisplayMode: getKatexDisplayMode,
       duplicatePolicy: KATEX_COPY_DUPLICATE_POLICY,
-      testingExamples: [],
+      testingExamples: [
+        "https://fmin.xyz/docs/theory/convex%20sets/Affine_sets.html",
+        "https://katex.org/",
+        "https://chat.deepseek.com",
+        "https://chatgpt.com",
+      ],
     },
     {
       id: "katex-attributes",
@@ -318,14 +335,15 @@
       site: "google-search",
       appliesTo: isGoogleSearch,
       candidates: [
-        candidateRule("google-xpm-copy-root", [
-          "[data-xpm-copy-root][data-xpm-latex]",
-        ]),
+        candidateRule("google-xpm-copy-root", ["[data-xpm-copy-root]"]),
         candidateRule("google-xpm-latex", ["[data-xpm-latex]"]),
       ],
       matches: (el, context) =>
-        context.site === "google-search" && el.hasAttribute("data-xpm-latex"),
-      extractTex: (el) => el.getAttribute("data-xpm-latex"),
+        context.site === "google-search" &&
+        (el.hasAttribute("data-xpm-copy-root") ||
+          el.hasAttribute("data-xpm-latex")),
+      extractTex: extractGoogleSearchTex,
+      getDisplayMode: getGoogleSearchDisplayMode,
       testingExamples: [],
     },
     ...KATEX_ENTRIES,
@@ -345,7 +363,10 @@
       extractTex: extractMathJaxV3Tex,
       getDisplayMode: (el) =>
         el.hasAttribute("display") ? "display" : "inline",
-      testingExamples: [],
+      testingExamples: [
+        "https://sylvain69780.github.io/2021/06/05/dihedral-angle-and-the-spider-slider-puzzle.html",
+        "https://11011110.github.io/blog/2026/08/17/fractional-rings-tangent.html",
+      ],
     },
     {
       id: "mathjax-v2",
@@ -368,7 +389,9 @@
       extractTex: extractMathJaxTex,
       getDisplayMode: (el) =>
         el.matches(".MathJax_Display, .MJXc-display") ? "display" : "inline",
-      testingExamples: [],
+      testingExamples: [
+        "https://math.stackexchange.com/questions/2660361/how-do-i-interpret-eulers-formula",
+      ],
     },
   ];
 
