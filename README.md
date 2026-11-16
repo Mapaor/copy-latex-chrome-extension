@@ -14,7 +14,7 @@ Version 1.5: Now with Typst support!
 
 Version 1.6: A new config button in the popup UI that allows some basic customization (like choosing the theme or hiding the 'copy as' feature in the context menu).
 
-Version 1.7: New 'Show overlay on hover' setting (enabled by default), if disabled equations can be copied through a 'Copy equation' context-menu item.
+Version 1.7: New features: Hide overlay for single equations (and copy them via context menu) and override Ctrl+C for selection copying. These features can be enabled via the popup settings.
 
 ## Example GIFs
 #### KaTeX
@@ -111,7 +111,7 @@ later as globals, these are [turndown](https://github.com/mixmark-io/turndown), 
 ## Links
 - Chrome Add-on page: [https://chromewebstore.google.com/detail/copy-latex-katex-mathjax/lmhdbdfaadjfjclobmodomehekpjpkgn](https://chromewebstore.google.com/detail/copy-latex-katex-mathjax/lmhdbdfaadjfjclobmodomehekpjpkgn)
 - GitHub Repo: [https://github.com/Mapaor/copy-latex-chrome-extension](https://github.com/Mapaor/copy-latex-chrome-extension)
-- README as a website: [https://mapaor.github.io/copy-latex-chrome-extension/](https://mapaor.github.io/copy-latex-chrome-extension/)
+- Extension's website: [https://mapaor.github.io/copy-latex-website](https://mapaor.github.io/copy-latex-website)
 
 ## Firefox version
 There is also a Firefox version of this extension: [https://github.com/Mapaor/copy-latex-fireofx-extension](https://github.com/Mapaor/copy-latex-firefox-extension) 
@@ -124,7 +124,7 @@ A Safari version is not planned because publishing in Safari is ridiculously exp
 
 ## Acknowledgements
 
-Credits to @leander-ow for his dark mode contribution and to @ashigirl96 for suggesting and providing a working code implementation for the copy selection as Markdown feature, and to @deralbert for his ChatGPT custom rendering fix.
+Credits to @leander-ow for his dark mode contribution and to @ashigirl96 for suggesting and providing a working code implementation for the copy selection as Markdown feature, to @deralbert for his ChatGPT custom rendering fix, and to @NeumoNeumo for his Zhihu and Ctrl+C override contributions.
 
 This extension also works thanks to the following open source projects:
 - [Turndown](https://github.com/mixmark-io/turndown) - Library for converting HTML to Markdown
@@ -152,8 +152,8 @@ Some minor things to fix or improve (for when I have the time):
 - [X] Unify detection for single equations and for equations in range of a selection into a single one
 - [X] Rewrite detection.js so that there is a single registry containing all detection specific rules for each kind of math rendering (to make it easier to add new kinds of math rendering of specific websites)
 - [ ] Improve the documentation of the extension (the screenshots and GIFs are of previous versions). 
-- [ ] Maybe even create a website for the extension using another repo and GH pages.
-- [ ] Create a set of single-file html files that serve to test the extension for all the different math kinds (kinds defined in detection.js).
+- [X] Maybe even create a website for the extension using another repo and GH pages.
+- [ ] Create a set of single-file html files that serve to test the extension (using the examples stated in testingExamples of detection-registry.js).
 
 ### Planned features:
 - [X] **Text selection to Markdown**: Select some text that includes equations, right click and a new option "[Extension Icon] Copy as Markdown" appears.
