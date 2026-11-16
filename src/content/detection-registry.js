@@ -394,6 +394,7 @@
         el.matches(".MathJax_Display, .MJXc-display") ? "display" : "inline",
       testingExamples: [
         "https://math.stackexchange.com/questions/2660361/how-do-i-interpret-eulers-formula",
+        "https://proofwiki.org/wiki/Infinite_Product_of_Product_of_Sequence_of_n_plus_alpha_over_Sequence_of_n_plus_beta"
       ],
     },
   ];
