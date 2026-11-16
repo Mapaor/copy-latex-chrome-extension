@@ -8,14 +8,25 @@
 
 	ns.state.showOverlay = ns.state.showOverlay !== false;
 	ns.state.contextMenuEquation = ns.state.contextMenuEquation || null;
+	ns.state.activeDetection = ns.state.activeDetection || null;
+
+	function clearActiveDetection() {
+		const activeElement = ns.state.activeDetection?.element;
+		const currentTarget = ns.state.currentTarget;
+		activeElement?.classList.remove('hoverlatex-hover');
+		if (currentTarget && currentTarget !== activeElement) {
+			currentTarget.classList.remove('hoverlatex-hover');
+		}
+		ns.state.activeDetection = null;
+		ns.state.currentTarget = null;
+	}
 
 	let showOverlayPreferenceRevision = 0;
 	function setShowOverlayPreference(value) {
 		ns.state.showOverlay = value !== false;
 		if (ns.state.showOverlay) return;
 
-		ns.state.currentTarget?.classList.remove('hoverlatex-hover');
-		ns.state.currentTarget = null;
+		clearActiveDetection();
 		ns.output.hideOverlay();
 	}
 
@@ -116,14 +127,42 @@
 	// Show overlay for that math root (detection contains the latex code, the math root and the target element to be used for positioning)
   function showOverlayForDetection(detection) {
 		if (!ns.state.showOverlay) return;
+
+		const overlayTarget = detection.overlayTarget || detection.element;
+		const activeDetection = ns.state.activeDetection;
+		if (
+			activeDetection?.element === detection.element &&
+			activeDetection.overlayTarget === overlayTarget &&
+			activeDetection.tex === detection.tex
+		) {
+			return;
+		}
+
+		if (activeDetection?.element !== detection.element) {
+			activeDetection?.element?.classList.remove('hoverlatex-hover');
+			if (ns.state.currentTarget && ns.state.currentTarget !== activeDetection?.element) {
+				ns.state.currentTarget.classList.remove('hoverlatex-hover');
+			}
+		}
+
+		ns.state.activeDetection = { ...detection, overlayTarget };
 		ns.state.currentTarget = detection.element;
 		detection.element.classList.add('hoverlatex-hover');
-		ns.output.showOverlay(detection.overlayTarget || detection.element, detection.tex);
+		ns.output.showOverlay(overlayTarget, detection.tex);
 	}
 
 	// Hovering
 	document.addEventListener('mouseover', (event) => {
 		if (!ns.state.showOverlay) return;
+
+		const currentTarget = ns.state.currentTarget;
+		if (currentTarget && !currentTarget.isConnected) {
+			clearActiveDetection();
+			ns.output.hideOverlay();
+		} else if (currentTarget && event.target instanceof Node && currentTarget.contains(event.target)) {
+			return;
+		}
+
 		const detection = ns.detect.detectFromTarget(event.target);
 		if (detection) showOverlayForDetection(detection);
 	});
@@ -149,9 +188,8 @@
 		if (related?.closest?.('.hoverlatex-overlay')) return;
 		if (ns.detect.findCandidatesFromTarget(related).length > 0) return;
 
-		currentTarget.classList.remove('hoverlatex-hover');
+		clearActiveDetection();
 		ns.output.hideOverlay();
-		ns.state.currentTarget = null;
 	});
 
 	// Ignore right clicks, middle clicks and keyboard-generated clicks. Only pointerdown and clicik are observed.
