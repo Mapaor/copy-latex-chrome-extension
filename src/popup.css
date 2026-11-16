@@ -74,7 +74,7 @@ body {
 
 body.expanded {
   max-height: 600px;
-  min-height: 275px; /* Leave room for the settings panel when expanded. */
+  min-height: 315px; /* Leave room for the settings panel when expanded. */
   height: auto;
   overflow: visible;
 }
@@ -185,6 +185,18 @@ input:checked + .slider:before {
   stroke: var(--icon-hover);
 }
 
+.icon-link {
+  margin-right: 8px;
+  color: var(--icon-stroke);
+  text-decoration: none;
+}
+
+.icon-link svg,
+.icon-link:hover svg {
+  fill: currentColor;
+  stroke: none;
+}
+
 .settings-panel {
   position: absolute;
   top: 2.2em;
@@ -197,6 +209,13 @@ input:checked + .slider:before {
   max-height: 320px;
   overflow-y: auto;
   z-index: 10;
+}
+
+.useful-links {
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+  margin-bottom: 4px;
 }
 
 .settings-checkbox, .theme-radio {
