@@ -1,17 +1,6 @@
-// Converts the live selection to Markdown and copies it to the clipboard
+// Converts the live selection to Markdown
 
 (() => {
-  // This is the (only) exposed function, it's the one called by output.js after background.js detects the context menu click
-  async function convertAndCopySelection(selection) {
-    try {
-      const markdown = await convertSelectionToLatexMarkdown(selection); // Attempt conversion
-      if (!markdown) return { ok: false, error: 'No content' };
-      return await copyToClipboard(markdown); // Copying conversion to clipboard
-    } catch (error) {
-      console.error('[Copy LaTeX] Error in convertAndCopySelection:', error);
-      return { ok: false, error: String(error) };
-    }
-  }
 
   // Problem: Turndown works great for converting headings, bold, italics, etc. That is common HTML tags to markdown
   // however for equations it does not know how these are rendered nor where their latex code is stored
@@ -97,7 +86,7 @@
 
   // Given a cloned DOM fragment (selection), we convert it to markdown using Turndown and custom rules
   // for things turndown does not know how to handle
-  async function convertSelectionToLatexMarkdown(selection) {
+  function convertSelectionToLatexMarkdown(selection) {
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return '';
 
     const container = document.createElement('div'); // All conversion will happen inside this div container
@@ -163,78 +152,10 @@
     return markdown.trim();
   }
 
-  // Finally, copy the markdown or typst to clipboard
-  async function copyToClipboard(text) {
-    class KnownFailureError extends Error {}
-
-    // Method 1: Try the navigator.clipboard API
-    const useClipboardAPI = async (t) => {
-      let ret;
-      try {
-        ret = await navigator.permissions.query({
-          name: 'clipboard-write',
-          allowWithoutGesture: true,
-        });
-      } catch (e) {
-        if (e instanceof TypeError) {
-          // If firefox doesn't support querying clipboard-write, try the writeText directly
-          await navigator.clipboard.writeText(t);
-          return true;
-        }
-        throw e;
-      }
-
-      if (ret && ret.state === 'granted') {
-        await navigator.clipboard.writeText(t);
-        return true;
-      }
-      throw new KnownFailureError('no permission to call navigator.clipboard API');
-    };
-
-    // Method 2: If the modern Clipboard API fails we fallback to textarea + execCommand (despite being deprecated in modern JS)
-    const useOnPageTextarea = async (t) => {
-      const textBox = document.createElement('textarea');
-      document.body.appendChild(textBox);
-      try {
-        textBox.value = t;
-        textBox.select();
-        const result = document.execCommand('Copy');
-        if (result) return Promise.resolve(true);
-        return Promise.reject(new KnownFailureError('execCommand returned false'));
-      } catch (e) {
-        return Promise.reject(e);
-      } finally {
-        if (document.body.contains(textBox)) document.body.removeChild(textBox);
-      }
-    };
-
-    // Now let's use these functions
-
-    // First try clipboard API (Method 1)
-    try {
-      await useClipboardAPI(text);
-      return { ok: true, method: 'navigator_api' };
-    } catch (error) {
-      if (error instanceof KnownFailureError) {
-        console.debug('[Copy LaTeX]', error);
-      } else {
-        const err = error;
-        console.error('[Copy LaTeX] Clipboard error (navigator_api):', err);
-        return { ok: false, error: `${err.name} ${err.message}`, method: 'navigator_api' };
-      }
-    }
-
-    // Then try the textarea fallback (Method 2)
-    try {
-      await useOnPageTextarea(text);
-      return { ok: true, method: 'textarea' };
-    } catch (error) {
-      const err = error;
-      console.error('[Copy LaTeX] Clipboard error (textarea):', err);
-      return { ok: false, error: `${err.name} ${err.message}`, method: 'textarea' };
-    }
-  }
-
-  // Only the entrypoint function is exposed globally
-  globalThis.convertAndCopySelection = convertAndCopySelection;
+  // This is the only function exposed to the other content scripts
+  // output.js calls it for both the context-menu and keyboard-copy actions
+  // It returns Markdown so output.js can convert and copy the final text
+  const ns = (window.CopyLatex = window.CopyLatex || {});
+  ns.selection = ns.selection || {};
+  ns.selection.toMarkdown = convertSelectionToLatexMarkdown;
 })();

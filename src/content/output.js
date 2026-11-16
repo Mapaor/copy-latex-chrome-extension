@@ -64,6 +64,108 @@
 
 
 
+	// Keep the output format ready because the copy event cannot wait for storage
+	// If the setting has not loaded yet, let the browser copy the selection as usual
+	let cachedOutputFormat = 'latex';
+	let outputFormatLoaded = false;
+	let outputFormatPreferenceRevision = 0;
+
+	function setOutputFormatPreference(value) {
+		cachedOutputFormat = value === 'typst' ? 'typst' : 'latex';
+		outputFormatLoaded = true;
+	}
+
+	try {
+		browser.storage.onChanged.addListener((changes, areaName) => {
+			if (areaName !== 'local' || !changes.outputFormat) return;
+			outputFormatPreferenceRevision += 1;
+			setOutputFormatPreference(changes.outputFormat.newValue);
+		});
+
+		// Keep a new setting change if it arrives before this first read finishes
+		const initialRevision = outputFormatPreferenceRevision;
+		browser.storage.local.get('outputFormat').then(({ outputFormat }) => {
+			if (outputFormatPreferenceRevision === initialRevision) setOutputFormatPreference(outputFormat);
+		}).catch((error) => {
+			console.warn('[Copy LaTeX] Failed to read output format preference:', error);
+		});
+	} catch (error) {
+		console.warn('[Copy LaTeX] Failed to watch output format preference:', error);
+	}
+
+	// Convert the selection and choose its output format without copying it yet
+	// This runs during the copy event, before the browser copies the text
+	function prepareSelectionOutput(selection, format) {
+		if (typeof ns.selection?.toMarkdown !== 'function') {
+			return { ok: false, error: 'Selection-to-Markdown conversion is not available' };
+		}
+
+		try {
+			const markdown = ns.selection.toMarkdown(selection);
+			if (!markdown) return { ok: false, error: 'No content' };
+			if (format !== 'typst') return { ok: true, text: markdown, format: 'latex' };
+			if (typeof window.markdown2typst !== 'function') {
+				return { ok: false, error: 'markdown2typst library not loaded' };
+			}
+			return { ok: true, text: window.markdown2typst(markdown), format: 'typst' };
+		} catch (error) {
+			console.error('[Copy LaTeX] Selection conversion error:', error);
+			return { ok: false, error: String(error) };
+		}
+	}
+
+	// Method 1: Try the browser clipboard API
+	async function copyTextToClipboard(text) {
+		try {
+			if (!navigator.clipboard?.writeText) throw new Error('Clipboard API is unavailable');
+			await navigator.clipboard.writeText(text);
+			return { ok: true, method: 'navigator_api' };
+		} catch (clipboardError) {
+			// Method 2: If the clipboard API fails, use a temporary textarea and execCommand instead
+			let textBox;
+			try {
+				textBox = document.createElement('textarea');
+				textBox.value = text;
+				textBox.setAttribute('readonly', '');
+				textBox.style.position = 'fixed';
+				textBox.style.opacity = '0';
+				document.body.appendChild(textBox);
+				textBox.select();
+				if (!document.execCommand('copy')) throw new Error('execCommand returned false');
+				return { ok: true, method: 'textarea' };
+			} catch (fallbackError) {
+				console.error('[Copy LaTeX] Selection clipboard error:', clipboardError, fallbackError);
+				return { ok: false, error: `${fallbackError.name} ${fallbackError.message}` };
+			} finally {
+				textBox?.remove();
+			}
+		}
+	}
+
+	// Ctrl+C starts a copy event. Set clipboardData before the browser copies the text
+	function writeSelectionToCopyEvent(event) {
+		if (!outputFormatLoaded || !event?.clipboardData) return false;
+		const result = prepareSelectionOutput(window.getSelection(), cachedOutputFormat);
+		if (!result.ok) return false;
+
+		try {
+			event.clipboardData.setData('text/plain', result.text);
+			event.preventDefault();
+			return true;
+		} catch (error) {
+			console.warn('[Copy LaTeX] Could not write selection to copy event:', error);
+			return false;
+		}
+	}
+
+	async function convertAndCopySelection(selection) {
+		const prepared = prepareSelectionOutput(selection, cachedOutputFormat);
+		if (!prepared.ok) return prepared;
+		const clipboardResult = await copyTextToClipboard(prepared.text);
+		if (!clipboardResult.ok) return clipboardResult;
+		return { ok: true, format: prepared.format, method: clipboardResult.method };
+	}
+
 	// SINGLE EQUATION CONTEXT MENU (For hidden overlay)
 	// Copy the equation (cached by main.js)
 	browser.runtime.onMessage.addListener((message) => {
@@ -80,53 +182,18 @@
 	});
 
 	// SELECTION COPY
-  // The background.js script sends the (selection conversion) request
-  // selection-to-markdown.js reads the selection, clones it and converts the HTML to markdown
-  // output.js reads the markdown, if needed converts it to Typst, and finally copies the result to the clipboard
+	// The background script sends this request after the context-menu item is clicked
+	// selection-to-markdown.js reads the live selection, clones it and converts the HTML to Markdown
+	// output.js converts the Markdown to Typst when needed and copies the result
 	browser.runtime.onMessage.addListener((message) => {
 		if (message?.type !== 'convertSelectionToMarkdown') return;
-
-		return (async () => {
-			if (typeof convertAndCopySelection !== 'function') {
-				return { ok: false, error: 'convertAndCopySelection is not available' };
-			}
-
-			const result = await convertAndCopySelection(window.getSelection()); // This gets the markdown but also copies it to the clipboard
-			if (!result.ok) return result;
-
-      // Check [LaTeX|Typst] preference from local storage
-			const { outputFormat = 'latex' } = await browser.storage.local.get('outputFormat');
-
-      // Convert to Typst if selected (if not exit with the markdown)
-      if (outputFormat !== 'typst') return result;
-
-      // Check markdown2typst library is present
-			if (!window.markdown2typst) {
-				console.error('[Copy LaTeX] markdown2typst library not loaded');
-				return { ok: false, error: 'markdown2typst library not loaded' };
-			}
-
-			try {
-        // Get the markdown from clipboard (we just copied it)
-				const markdown = await navigator.clipboard.readText();
-				const typst = window.markdown2typst(markdown);
-
-        // Copy typst back to clipboard
-				await navigator.clipboard.writeText(typst);
-        // console.log('[Copy LaTeX] Converted to Typst and copied');
-
-				return { ok: true, format: 'typst' };
-
-			} catch (error) {
-				console.error('[Copy LaTeX] Typst conversion error:', error);
-				return { ok: false, error: String(error) };
-			}
-		})();
+		return convertAndCopySelection(window.getSelection());
 	});
 
 	ns.output = ns.output || {};
 	Object.assign(ns.output, {
 		latexToTypst,
 		copyLatex,
+		writeSelectionToCopyEvent,
 	});
 })();

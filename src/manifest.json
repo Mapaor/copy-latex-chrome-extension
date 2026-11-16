@@ -55,6 +55,7 @@
         "content/output.js",
         "content/main.js",
         "content/selection-to-markdown.js",
+        "content/selection-copy.js",
         "lib/html2markdown/turndown/turndown.js",
         "lib/html2markdown/turndown/turndown-plugin-gfm.js",
         "lib/latex2typst/tex2typst.min.js",
