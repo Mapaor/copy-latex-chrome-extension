@@ -74,7 +74,7 @@ body {
 
 body.expanded {
   max-height: 600px;
-  min-height: 260px; /* Leave room for the settings panel when expanded. */
+  min-height: 275px; /* Leave room for the settings panel when expanded. */
   height: auto;
   overflow: visible;
 }
