@@ -117,7 +117,6 @@
       paragraph.replaceWith(...paragraph.childNodes);
     });
 
-    // TODO: Add a settings option to choose the bulleted list marker for Turndown (* or -)
 
     // TURNDOWN LIBRARY + GFM PLUGIN
     // Used locally (inside lib/), their original sources can be found at npm via unpkg or jsdelivr
@@ -126,6 +125,7 @@
     const turndownService = new TurndownService({
       headingStyle: 'atx',
       codeBlockStyle: 'fenced',
+      bulletListMarker: '-',
     })
       .remove('script')
       .remove('style');
