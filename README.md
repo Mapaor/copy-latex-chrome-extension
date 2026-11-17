@@ -126,7 +126,7 @@ Some minor things to fix or improve (for when I have the time):
 - [X] In the copy selection (both to Markdown and to Typst) feature fix the Wikipedia case (don't detect images that contain the `mwe-math` related classes as images).
 - [X] Add support for new ChatGPT custom table rendering
 - [X] Fix new google search math rendering 
-- [ ] Fix overlay overflow in very large pages
+- [X] Fix overlay overflow in very large pages
 
 ### Internal improvements
 - [X] Unify detection for single equations and for equations in range of a selection into a single one
@@ -143,7 +143,8 @@ Some minor things to fix or improve (for when I have the time):
 - [X] **Hide option in context menu**:  Allow users to hide the copy selection feature when right-clicking (for those who don't need it and want a less clustered context menu).
 - [X] **Hide overlay option**: Allow to hide the hover overlay and use the right-click 'Copy equation' menu item instead.
 - [X] **Hijack Ctrl+C for selection**: Option to copy selection (as Markdown or Typst) without having to open the context menu.
-- [ ] **Choose the bulleted list marker**: Option to choose between * or - for markdown unordered lists.
 - [ ] **Custom  delimiters**: 
 Config option to chose between no delimiters (default), `$` and `$$`, `\(` and `\[`, always `$`, or always `$$`.
-- [ ] **Custom translations**. Allow to replace the 'Click to copy', 'Copied!', 'Copy as Markdown' and 'Copy as Typst' messages to be replaced by custom ones.
+- [ ] **Custom translations**: Allow to replace the 'Click to copy', 'Copied!', 'Copy as Markdown' and 'Copy as Typst' messages to be replaced by custom ones.
+- [ ] **Opera and Edge*: Publish in their respective addon marketplaces.
+- [ ] **Compation OCR extension**: Link the companion (in developing process) OCR for math client-side extension, for PDFs. 
