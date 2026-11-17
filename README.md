@@ -146,5 +146,7 @@ Some minor things to fix or improve (for when I have the time):
 - [ ] **Custom  delimiters**: 
 Config option to chose between no delimiters (default), `$` and `$$`, `\(` and `\[`, always `$`, or always `$$`.
 - [ ] **Custom translations**: Allow to replace the 'Click to copy', 'Copied!', 'Copy as Markdown' and 'Copy as Typst' messages to be replaced by custom ones.
-- [ ] **Opera and Edge*: Publish in their respective addon marketplaces.
-- [ ] **Compation OCR extension**: Link the companion (in developing process) OCR for math client-side extension, for PDFs. 
+- [ ] **Opera**: Publish the extension to Opera addons. -> Submitted. Waiting for approaval. Will be published at https://addons.opera.com/en/extensions/details/copy-latex/.
+- [ ] **Edge**: Publish the extension to Edge addons. ->  Waiting for this [bug](https://github.com/microsoft/MicrosoftEdge-Extensions/issues/905) to be closed.
+- [ ] **Compation OCR extension**: Link the companion (in developing process) OCR for math client-side extension, for PDFs.
+- [ ] **MathML Support**: Allow the output to be not LaTeX or Typst but MathML as well.
