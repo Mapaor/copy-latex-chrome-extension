@@ -140,12 +140,14 @@ Some minor things to fix or improve (for when I have the time):
 - [X] **Typst support**: 
   Pop up with a toggle between LaTeX and Typst
 - [X] **Theme selection**: Config option to choose the theme (light, dark or system)
-- [X] **Hide option in context menu**:  Allow users to hide the copy selection feature when right-clicking (for those who don't need it and want a less clustered context menu).
+- [X] **Hide copy selection option in context menu**:  Allow users to hide the copy selection feature when right-clicking (for those who don't need it and want a less clustered context menu).
 - [X] **Hide overlay option**: Allow to hide the hover overlay and use the right-click 'Copy equation' menu item instead.
 - [X] **Hijack Ctrl+C for selection**: Option to copy selection (as Markdown or Typst) without having to open the context menu.
 - [ ] **Custom  delimiters**: 
 Config option to chose between no delimiters (default), `$` and `$$`, `\(` and `\[`, always `$`, or always `$$`.
-- [ ] **Custom translations**: Allow to replace the 'Click to copy', 'Copied!', 'Copy as Markdown' and 'Copy as Typst' messages to be replaced by custom ones.
+- [ ]  **Make the Hide overlay more nuanced**: Allow to hide only the "Click to copy" overlay (and show the "Copied!" if a click happens).
+- [ ] **Custom languages**: Allow to replace the 'Click to copy', 'Copied!', 'Copy as Markdown' and 'Copy as Typst' messages to be replaced by custom ones.
+- [ ] **Custom LaTeX replacements** Replace LaTeX commands with others (for example `\displaystyle` with nothing).
 - [ ] **Opera**: Publish the extension to Opera addons. -> Submitted. Waiting for approaval. Will be published at https://addons.opera.com/en/extensions/details/copy-latex/.
 - [ ] **Edge**: Publish the extension to Edge addons. ->  Waiting for this [bug](https://github.com/microsoft/MicrosoftEdge-Extensions/issues/905) to be closed.
 - [ ] **Compation OCR extension**: Link the companion (in developing process) OCR for math client-side extension, for PDFs.
