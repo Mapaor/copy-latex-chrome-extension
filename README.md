@@ -113,14 +113,26 @@ later as globals, these are [turndown](https://github.com/mixmark-io/turndown), 
 - GitHub Repo: [https://github.com/Mapaor/copy-latex-chrome-extension](https://github.com/Mapaor/copy-latex-chrome-extension)
 - Extension's website: [https://mapaor.github.io/copy-latex-website](https://mapaor.github.io/copy-latex-website)
 
-## Firefox version
-There is also a Firefox version of this extension: [https://github.com/Mapaor/copy-latex-fireofx-extension](https://github.com/Mapaor/copy-latex-firefox-extension) 
+## Other browsers
 
-You can also use this extension in Brave and Arc (they support Chrome extensions by default). 
+### Chrome
+The repo you're currently seeing. See [Links](#links).
 
-I also plan to adapt this code for Edge and Opera and publish in their respective places. 
+*Note: This Chrome repo is actually a git fork of the [Firefox repo](https://github.com/Mapaor/copy-latex-firefox-extension). The main changes between them are the manifest, the use of polyfill to handle certain browser APIs, and the README.*
 
-A Safari version is not planned because publishing in Safari is ridiculously expensive.
+### Firefox
+The Firefox version is the one where I usually push the changes first.
+- [GitHub](https://github.com/Mapaor/copy-latex-chrome-extension)
+-[Firefox Add-Ons](https://addons.mozilla.org/en-US/firefox/addon/copy-latex/)
+
+### Opera
+Uses the exact same code as this repo but published at [Opera Addons](https://addons.opera.com/en/extensions/details/copy-latex/).
+
+### Edge
+Pending publishing there as well.
+
+### Brave, Vivaldi, Arc
+Already have native support for Chrome extensions.
 
 ## Acknowledgements
 
@@ -146,7 +158,7 @@ Some minor things to fix or improve (for when I have the time):
 - [X] In the copy selection (both to Markdown and to Typst) feature fix the Wikipedia case (don't detect images that contain the `mwe-math` related classes as images).
 - [X] Add support for new ChatGPT custom table rendering
 - [X] Fix new google search math rendering 
-- [ ] Fix overlay overflow in very large pages
+- [X] Fix overlay overflow in very large pages
 
 ### Internal improvements
 - [X] Unify detection for single equations and for equations in range of a selection into a single one
@@ -160,10 +172,15 @@ Some minor things to fix or improve (for when I have the time):
 - [X] **Typst support**: 
   Pop up with a toggle between LaTeX and Typst
 - [X] **Theme selection**: Config option to choose the theme (light, dark or system)
-- [X] **Hide option in context menu**:  Allow users to hide the copy selection feature when right-clicking (for those who don't need it and want a less clustered context menu).
+- [X] **Hide copy selection option in context menu**:  Allow users to hide the copy selection feature when right-clicking (for those who don't need it and want a less clustered context menu).
 - [X] **Hide overlay option**: Allow to hide the hover overlay and use the right-click 'Copy equation' menu item instead.
 - [X] **Hijack Ctrl+C for selection**: Option to copy selection (as Markdown or Typst) without having to open the context menu.
-- [ ] **Choose the bulleted list marker**: Option to choose between * or - for markdown unordered lists.
 - [ ] **Custom  delimiters**: 
 Config option to chose between no delimiters (default), `$` and `$$`, `\(` and `\[`, always `$`, or always `$$`.
-- [ ] **Custom translations**. Allow to replace the 'Click to copy', 'Copied!', 'Copy as Markdown' and 'Copy as Typst' messages to be replaced by custom ones.
+- [ ]  **Make the Hide overlay more nuanced**: Allow to hide only the "Click to copy" overlay (and show the "Copied!" if a click happens).
+- [ ] **Custom languages**: Allow to replace the 'Click to copy', 'Copied!', 'Copy as Markdown' and 'Copy as Typst' messages to be replaced by custom ones.
+- [ ] **Custom LaTeX replacements** Replace LaTeX commands with others (for example `\displaystyle` with nothing).
+- [X] **Opera**: Publish the extension to Opera addons. [Link](https://addons.opera.com/en/extensions/details/copy-latex/).
+- [ ] **Edge**: Publish the extension to Edge addons. ->  Waiting for this [bug](https://github.com/microsoft/MicrosoftEdge-Extensions/issues/905) to be closed.
+- [ ] **Compation OCR extension**: Link the companion (in developing process) OCR for math client-side extension, for PDFs.
+- [ ] **MathML Support**: Allow the output to be not LaTeX or Typst but MathML as well.

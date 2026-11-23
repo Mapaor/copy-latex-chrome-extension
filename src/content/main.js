@@ -169,6 +169,7 @@
 
 	// Cache the equation under the native context menu
 	document.addEventListener('contextmenu', (event) => {
+		if (!event.isTrusted) return;
 		const detection = ns.detect.detectFromTarget(event.target);
 		const tex = typeof detection?.tex === 'string' ? detection.tex.trim() : '';
 		ns.state.contextMenuEquation = tex ? { tex, timestamp: Date.now() } : null;
@@ -200,7 +201,7 @@
 
 	// Handle click or mousedown events
 	function handleCopyGesture(event) {
-		if (!shouldHandleGesture(event)) return;
+		if (!event.isTrusted || !shouldHandleGesture(event)) return;
 
 		const overlay = ns.state.overlay;
 		if (overlay && overlay.classList.contains('visible') && event.target?.closest?.('.hoverlatex-overlay')) {
