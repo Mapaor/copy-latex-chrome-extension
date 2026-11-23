@@ -111,10 +111,11 @@ async function renderContextMenus() {
     await ensureContextMenuRemoved();
   }
 
-  if (config.showOverlay) {
-    await ensureEquationContextMenuRemoved();
-  } else {
+  const showEquationContextMenu = !config.showOverlay;
+  if (showEquationContextMenu) {
     await ensureEquationContextMenuExists();
+  } else {
+    await ensureEquationContextMenuRemoved();
   }
 }
 
