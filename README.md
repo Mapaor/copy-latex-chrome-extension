@@ -100,8 +100,24 @@ Or simply:
 - GitHub Repo: [https://github.com/Mapaor/copy-latex-firefox-extension](https://github.com/Mapaor/copy-latex-firefox-extension)
 - Extension's website: [https://mapaor.github.io/copy-latex-website](https://mapaor.github.io/copy-latex-website)
 
-## Chrome version
-There is also a Chrome version of this extension. Check it out here: [https://github.com/Mapaor/copy-latex-chrome-extension](https://github.com/Mapaor/copy-latex-chrome-extension) 
+## Other browsers
+
+### Firefox
+The repo you're currently seeing. See [Links](#links).
+
+### Chrome
+There is also a Chrome version of the extension.
+- [GitHub](https://github.com/Mapaor/copy-latex-chrome-extension)
+-[ChromeWebstore](https://chromewebstore.google.com/detail/copy-latex-katex-mathjax/lmhdbdfaadjfjclobmodomehekpjpkgn)
+
+### Opera
+Uses the exact same code as the Chrome repo but published at [Opera Addons](https://addons.opera.com/en/extensions/details/copy-latex/).
+
+### Edge
+Pending publishing there as well.
+
+### Brave, Vivaldi, Arc
+Already have native support for Chrome extensions.
 
 ## Acknowledgements
 
@@ -148,7 +164,7 @@ Config option to chose between no delimiters (default), `$` and `$$`, `\(` and `
 - [ ]  **Make the Hide overlay more nuanced**: Allow to hide only the "Click to copy" overlay (and show the "Copied!" if a click happens).
 - [ ] **Custom languages**: Allow to replace the 'Click to copy', 'Copied!', 'Copy as Markdown' and 'Copy as Typst' messages to be replaced by custom ones.
 - [ ] **Custom LaTeX replacements** Replace LaTeX commands with others (for example `\displaystyle` with nothing).
-- [ ] **Opera**: Publish the extension to Opera addons. -> Submitted. Waiting for approaval. Will be published at https://addons.opera.com/en/extensions/details/copy-latex/.
+- [X] **Opera**: Publish the extension to Opera addons. [Link](https://addons.opera.com/en/extensions/details/copy-latex/).
 - [ ] **Edge**: Publish the extension to Edge addons. ->  Waiting for this [bug](https://github.com/microsoft/MicrosoftEdge-Extensions/issues/905) to be closed.
 - [ ] **Compation OCR extension**: Link the companion (in developing process) OCR for math client-side extension, for PDFs.
 - [ ] **MathML Support**: Allow the output to be not LaTeX or Typst but MathML as well.
