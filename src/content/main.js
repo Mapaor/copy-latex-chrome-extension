@@ -201,7 +201,7 @@
 
 	// Handle click or mousedown events
 	function handleCopyGesture(event) {
-		if (!event.isTrusted || !shouldHandleGesture(event)) return;
+		if (!event.isTrusted || !shouldHandleGesture(event) || !ns.state.showOverlay) return;
 
 		const overlay = ns.state.overlay;
 		if (overlay && overlay.classList.contains('visible') && event.target?.closest?.('.hoverlatex-overlay')) {
